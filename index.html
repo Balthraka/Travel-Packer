@@ -186,7 +186,38 @@ function Modal({title,onClose,children,w=380}){
   </>;
 }
 
-function NameInput({placeholder,defVal='',onSubmit}){
+function Confirm({message,onConfirm,onCancel,danger=true}){
+  return <>
+    <Veil onClick={onCancel} alpha={.6}/>
+    <div style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',
+      width:320,maxWidth:'90vw',background:'var(--sf)',border:'1px solid var(--bd)',
+      borderRadius:12,padding:24,zIndex:202,boxShadow:'0 24px 64px rgba(0,0,0,.7)',
+      animation:'fdU .18s ease'}}>
+      <div style={{fontSize:14,color:'var(--tx)',marginBottom:20,lineHeight:1.5}}>{message}</div>
+      <div style={{display:'flex',gap:8}}>
+        <button onClick={onCancel} style={{flex:1,padding:'9px',borderRadius:7,
+          background:'var(--sf2)',border:'1px solid var(--bd)',fontSize:13,color:'var(--tx2)'}}>
+          Cancel
+        </button>
+        <button onClick={onConfirm} style={{flex:1,padding:'9px',borderRadius:7,fontSize:13,
+          fontWeight:700,background:danger?'rgba(240,82,82,.15)':'var(--am)',
+          border:danger?'1px solid rgba(240,82,82,.4)':'none',
+          color:danger?'var(--rd)':'#1a0e00'}}>
+          Confirm
+        </button>
+      </div>
+    </div>
+  </>;
+}
+
+function useConfirm(){
+  const [state,setState]=useState(null);
+  const ask=(message,onConfirm,danger=true)=>setState({message,onConfirm,danger});
+  const el=state?<Confirm message={state.message} danger={state.danger}
+    onConfirm={()=>{state.onConfirm();setState(null);}}
+    onCancel={()=>setState(null)}/>:null;
+  return{ask,el};
+}
   const [v,setV]=useState(defVal);
   const r=useRef();
   useEffect(()=>{r.current?.focus();r.current?.select();},[]);
@@ -244,6 +275,7 @@ function ItemCard({item,a,locColor,onToggle,onQty,onOpen}){
 function LocCol({loc,items,assignments,onAdd,onToggle,onQty,onOpen,onRename,onSetBagWeight,onDel}){
   const [menu,setMenu]=useState(false);
   const mRef=useRef();
+  const{ask:confirm,el:confirmEl}=useConfirm();
   useEffect(()=>{
     if(!menu)return;
     const fn=e=>{if(!mRef.current?.contains(e.target))setMenu(false);};
@@ -263,7 +295,7 @@ function LocCol({loc,items,assignments,onAdd,onToggle,onQty,onOpen,onRename,onSe
   const totalW = bagW + contentsW;
 
   return <div className="loc-col" style={{borderTop:`3px solid ${loc.color}`}}>
-    
+    {confirmEl}
     <div style={{padding:'12px 12px 10px',flexShrink:0}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
         <div className="bb" style={{fontSize:18,color:loc.color,letterSpacing:2}}>{loc.name}</div>
@@ -283,7 +315,7 @@ function LocCol({loc,items,assignments,onAdd,onToggle,onQty,onOpen,onRename,onSe
                 style={{display:'block',width:'100%',padding:'9px 14px',fontSize:13,color:'var(--tx)',textAlign:'left'}}>Rename</button>
               <button onClick={()=>{onSetBagWeight();setMenu(false);}}
                 style={{display:'block',width:'100%',padding:'9px 14px',fontSize:13,color:'var(--tx)',textAlign:'left'}}>Set bag weight</button>
-              <button onClick={()=>{onDel();setMenu(false);}}
+              <button onClick={()=>{confirm(`Delete "${loc.name}" and all its items?`,onDel);setMenu(false);}}
                 style={{display:'block',width:'100%',padding:'9px 14px',fontSize:13,color:'var(--rd)',textAlign:'left'}}>Delete</button>
             </div>}
           </div>
@@ -334,6 +366,7 @@ function ItemDrawer({item,locations,assignments,onClose,onQty,onToggle,onRename,
   const [editingWeight,setEditingWeight]=useState(false);
   const [weightVal,setWeightVal]=useState('');
   const wRef=useRef();
+  const{ask:confirm,el:confirmEl}=useConfirm();
   const totalQty=assignments.reduce((s,a)=>s+a.quantity,0);
   const packedQty=assignments.filter(a=>a.packed).reduce((s,a)=>s+a.quantity,0);
   const itemWeight = item.weight ?? 200;
@@ -348,6 +381,7 @@ function ItemDrawer({item,locations,assignments,onClose,onQty,onToggle,onRename,
   useEffect(()=>{if(editingWeight)wRef.current?.focus();},[editingWeight]);
 
   return <>
+    {confirmEl}
     <Veil onClick={onClose} alpha={.38}/>
     <div className="drawer-panel">
 
@@ -386,7 +420,7 @@ function ItemDrawer({item,locations,assignments,onClose,onQty,onToggle,onRename,
           </div>
           {editingWeight
             ?<div style={{display:'flex',gap:6,alignItems:'center'}}>
-                <input ref={wRef} value={weightVal} onChange={e=>setWeightVal(e.target.value.replace(/\D/,''))}
+                <input ref={wRef} value={weightVal} onChange={e=>setWeightVal(e.target.value.replace(/\D/g,''))}
                   onKeyDown={e=>{if(e.key==='Enter')saveWeight();if(e.key==='Escape')setEditingWeight(false);}}
                   onBlur={saveWeight}
                   style={{width:64,background:'var(--sf3)',border:'1px solid var(--am)',borderRadius:5,
@@ -451,7 +485,7 @@ function ItemDrawer({item,locations,assignments,onClose,onQty,onToggle,onRename,
             <div style={{display:'flex',gap:8}}>
               <button onClick={()=>setEditVal(item.name)} style={{flex:1,padding:'7px',borderRadius:6,
                 background:'var(--sf2)',border:'1px solid var(--bd)',fontSize:12,color:'var(--tx2)'}}>✎ Rename</button>
-              <button onClick={()=>{if(window.confirm(`Delete "${item.name}" from all locations?`))onDel();}}
+              <button onClick={()=>confirm(`Delete "${item.name}" from all locations?`,onDel)}
                 style={{flex:1,padding:'7px',borderRadius:6,fontSize:12,fontWeight:500,
                   background:'rgba(240,82,82,.08)',border:'1px solid rgba(240,82,82,.25)',color:'var(--rd)'}}>
                 ✗ Delete
@@ -620,16 +654,15 @@ function BoardSummary({groups,showWeight}){
           </div>
         </div>
         <div>
-          {rows.map(a=>{
-            const itemObj=loc._items?.find(i=>i.id===a.itemId);
-            return <div key={a.id} style={{display:'flex',alignItems:'center',gap:9,
+          {rows.map(a=>(
+            <div key={a.id} style={{display:'flex',alignItems:'center',gap:9,
               padding:'7px 14px',borderBottom:'1px solid var(--bd)',
               background:a.packed?'rgba(63,214,138,.05)':'transparent'}}>
               <StatusDot packed={a.packed}/>
               <span style={{flex:1,fontSize:12,color:'var(--tx)'}}>{a.item.name}</span>
               <span style={{fontSize:12,fontWeight:700,color:'var(--tx2)',flexShrink:0}}>×{a.quantity}</span>
-            </div>;
-          })}
+            </div>
+          ))}
         </div>
       </div>;
     })}
@@ -729,9 +762,10 @@ function Empty(){
 }
 
 /* ── SUMMARY ─────────────────────────────────────────────────────── */
-function Summary({trip}){
+function Summary({trip,onResetPacked}){
   const [sumView,setSumView]=useState('list');
   const [showWeight,setShowWeight]=useState(true);
+  const{ask:confirm,el:confirmEl}=useConfirm();
   const totalItems=trip.assignments.reduce((s,a)=>s+a.quantity,0);
   const packedItems=trip.assignments.filter(a=>a.packed).reduce((s,a)=>s+a.quantity,0);
   const pct=totalItems>0?(packedItems/totalItems)*100:0;
@@ -759,6 +793,7 @@ function Summary({trip}){
   const viewOpts=[['list','List'],['board','Columns'],['grid','Grid']];
 
   return <div className="print-scroll" style={{flex:1,overflowY:'auto',padding:'24px 28px'}}>
+    {confirmEl}
     <div style={{maxWidth:sumView==='grid'?'100%':sumView==='board'?'100%':740,margin:'0 auto'}}>
 
       {/* Header */}
@@ -783,6 +818,11 @@ function Summary({trip}){
               border:`1px solid ${showWeight?'var(--am)':'var(--bd)'}`,
               color:showWeight?'var(--am)':'var(--tx2)'}}>
             ⚖ Weights {showWeight?'On':'Off'}
+          </button>
+          <button onClick={()=>confirm('Reset all items to unpacked? This cannot be undone.',onResetPacked,true)}
+            style={{padding:'5px 12px',borderRadius:6,fontSize:12,fontWeight:600,
+              background:'var(--sf2)',border:'1px solid var(--bd)',color:'var(--tx2)'}}>
+            ↺ Reset Packed
           </button>
           <button onClick={()=>window.print()} style={{padding:'8px 16px',borderRadius:7,
             background:'var(--am)',color:'#1a0e00',fontWeight:700,fontSize:13}}>
@@ -837,7 +877,7 @@ function BagWeightModal({loc,onClose,onSave}){
       Tare weight of the empty bag itself (grams). This is added to the contents weight to give the total load.
     </div>
     <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:16}}>
-      <input ref={iRef} value={val} onChange={e=>setVal(e.target.value.replace(/\D/,''))}
+      <input ref={iRef} value={val} onChange={e=>setVal(e.target.value.replace(/\D/g,''))}
         onKeyDown={e=>e.key==='Enter'&&save()}
         style={{flex:1,background:'var(--sf2)',border:'1px solid var(--bd)',borderRadius:7,
           padding:'9px 12px',color:'var(--tx)',outline:'none',fontSize:16,fontWeight:700,textAlign:'center'}}/>
@@ -867,7 +907,7 @@ function Board({trip,onAdd,onToggle,onQty,onOpen,onAddLoc,onRenameLoc,onSetBagWe
   const onScroll=()=>{
     const el=scrollRef.current;
     if(!el)return;
-    const colW=el.scrollWidth/( trip.locations.length+1);
+    const colW=el.clientWidth; // on mobile each col is ~full width; on desktop doesn't matter
     setActiveIdx(Math.round(el.scrollLeft/colW));
   };
 
@@ -896,6 +936,18 @@ function Board({trip,onAdd,onToggle,onQty,onOpen,onAddLoc,onRenameLoc,onSetBagWe
       ))}
     </div>}
   </div>;
+}
+
+/* ── SAVE INDICATOR ──────────────────────────────────────────────── */
+function SaveIndicator({status}){
+  if(status==='idle')return null;
+  const cfg={
+    saving:{text:'Saving…',color:'var(--tx3)'},
+    saved: {text:'✓ Saved', color:'var(--gn)'},
+    error: {text:'⚠ Save failed',color:'var(--rd)'},
+  }[status]||{};
+  return <span style={{fontSize:11,color:cfg.color,marginRight:10,
+    transition:'opacity .3s',whiteSpace:'nowrap'}}>{cfg.text}</span>;
 }
 
 /* ── DISPLAY NAME ────────────────────────────────────────────────── */
@@ -939,11 +991,10 @@ function DisplayName({user,onUpdate}){
 }
 
 /* ── TRIP HEADER ─────────────────────────────────────────────────── */
-function TripHeader({trip,onHome,onRename,onSignOut,user,onUpdateUser,onSaveTemplate,onApplyTemplate,view,onView}){
+function TripHeader({trip,onHome,onRename,onSignOut,user,onUpdateUser,onSaveTemplate,onApplyTemplate,saveStatus,view,onView}){
   const [editing,setEditing]=useState(false);
   const [val,setVal]=useState('');
   const [mobileMenu,setMobileMenu]=useState(false);
-  const fRef=useRef();
   const iRef=useRef();
   const mRef=useRef();
 
@@ -1008,6 +1059,7 @@ function TripHeader({trip,onHome,onRename,onSignOut,user,onUpdateUser,onSaveTemp
       <button onClick={onSaveTemplate} style={{padding:'5px 10px',borderRadius:6,fontSize:12,
         background:'var(--sf2)',border:'1px solid var(--bd)',color:'var(--am)'}}>+ Save Template</button>
       <div style={{width:1,height:20,background:'var(--bd)'}}/>
+      <SaveIndicator status={saveStatus}/>
       <DisplayName user={user} onUpdate={onUpdateUser}/>
       <button onClick={onSignOut} style={{fontSize:12,color:'var(--tx3)',padding:'5px 10px',
         borderRadius:6,border:'1px solid var(--bd)',background:'var(--sf2)',flexShrink:0}}>Sign out</button>
@@ -1051,12 +1103,13 @@ function TripHeader({trip,onHome,onRename,onSignOut,user,onUpdateUser,onSaveTemp
 }
 
 /* ── HOME SCREEN ─────────────────────────────────────────────────── */
-function TemplateCard({tpl,trips,onRename,onRemoveItem,onDelete,onApplyToTrip}){
+function TemplateCard({tpl,trips,onRename,onRemoveItem,onUpdateQty,onAddItem,onDelete,onApplyToTrip}){
   const [expanded,setExpanded]=useState(false);
   const [renaming,setRenaming]=useState(false);
   const [val,setVal]=useState('');
   const [pickingTrip,setPickingTrip]=useState(false);
   const iRef=useRef();
+  const{ask:confirm,el:confirmEl}=useConfirm();
   const fmt=ts=>new Date(ts).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
 
   const startRename=e=>{e.stopPropagation();setVal(tpl.name);setRenaming(true);};
@@ -1077,11 +1130,35 @@ function TemplateCard({tpl,trips,onRename,onRemoveItem,onDelete,onApplyToTrip}){
     setPickingTrip(true);
   };
 
+  // Adding items state: {locName, itemName, qty}
+  const [adding,setAdding]=useState(null); // {locName}
+  const [addName,setAddName]=useState('');
+  const [addQty,setAddQty]=useState(1);
+  const addRef=useRef();
+  useEffect(()=>{if(adding)addRef.current?.focus();},[adding]);
+
+  const allLocNames=[...new Set(tpl.assignments.map(a=>a.locationName))];
+  const [newLocName,setNewLocName]=useState('');
+  const [showNewLoc,setShowNewLoc]=useState(false);
+  const newLocRef=useRef();
+  useEffect(()=>{if(showNewLoc)newLocRef.current?.focus();},[showNewLoc]);
+
+  const confirmAdd=(locName)=>{
+    if(!addName.trim()||addQty<1)return;
+    const existing=ITEM_TPLS.find(([n])=>n.toLowerCase()===addName.trim().toLowerCase());
+    onAddItem({
+      itemName:addName.trim(),
+      itemCategory:existing?existing[1]:'Custom',
+      itemWeight:existing?existing[2]:200,
+      locationName:locName,
+      quantity:addQty,
+    });
+    setAdding(null);setAddName('');setAddQty(1);
+  };
+
   return <>
-    <div style={{background:'var(--sf)',border:'1px solid var(--bd)',borderRadius:10,overflow:'hidden',
-      transition:'border-color .15s'}}
-      onMouseEnter={e=>e.currentTarget.style.borderColor='var(--sf3)'}
-      onMouseLeave={e=>e.currentTarget.style.borderColor='var(--bd)'}>
+    {confirmEl}
+    <div style={{background:'var(--sf)',border:'1px solid var(--bd)',borderRadius:10,overflow:'hidden'}}>
 
       {/* Header row */}
       <div style={{padding:'14px 16px',display:'flex',alignItems:'center',gap:12,cursor:'pointer'}}
@@ -1114,16 +1191,17 @@ function TemplateCard({tpl,trips,onRename,onRemoveItem,onDelete,onApplyToTrip}){
             background:'var(--am)',color:'#1a0e00',border:'none'}}>
           Apply
         </button>
-        <button onClick={e=>{e.stopPropagation();if(window.confirm(`Delete template "${tpl.name}"?`))onDelete();}}
+        <button onClick={e=>{e.stopPropagation();confirm(`Delete template "${tpl.name}"?`,onDelete);}}
           style={{color:'var(--tx3)',fontSize:15,padding:'4px 8px',borderRadius:5,flexShrink:0}}
           onMouseEnter={e=>e.currentTarget.style.color='var(--rd)'}
           onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✕</button>
         <span style={{color:'var(--tx3)',fontSize:12,flexShrink:0}}>{expanded?'▲':'▼'}</span>
       </div>
 
-      {/* Expanded view */}
+      {/* Expanded / edit view */}
       {expanded&&<div style={{borderTop:'1px solid var(--bd)',padding:'12px 16px',
-        display:'flex',flexDirection:'column',gap:12}}>
+        display:'flex',flexDirection:'column',gap:14}}>
+
         {Object.entries(byLoc).map(([locName,items])=>(
           <div key={locName}>
             <div style={{fontSize:10,color:'var(--tx3)',textTransform:'uppercase',
@@ -1133,18 +1211,88 @@ function TemplateCard({tpl,trips,onRename,onRemoveItem,onDelete,onApplyToTrip}){
                 <div key={a._idx} style={{display:'flex',alignItems:'center',gap:8,
                   padding:'6px 10px',background:'var(--sf2)',borderRadius:7}}>
                   <span style={{flex:1,fontSize:13}}>{a.itemName}</span>
-                  <span style={{fontSize:12,color:'var(--tx2)',fontWeight:600}}>×{a.quantity}</span>
+                  {/* Qty controls */}
+                  <div style={{display:'flex',alignItems:'center',gap:4,flexShrink:0}}>
+                    <button onClick={()=>a.quantity>1?onUpdateQty(a._idx,a.quantity-1):onRemoveItem(a._idx)}
+                      style={{width:22,height:22,borderRadius:4,background:'var(--sf3)',fontSize:15,
+                        display:'flex',alignItems:'center',justifyContent:'center'}}>−</button>
+                    <span style={{width:20,textAlign:'center',fontSize:13,fontWeight:600}}>{a.quantity}</span>
+                    <button onClick={()=>onUpdateQty(a._idx,a.quantity+1)}
+                      style={{width:22,height:22,borderRadius:4,background:'var(--sf3)',fontSize:15,
+                        display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
+                  </div>
                   <button onClick={()=>onRemoveItem(a._idx)}
-                    style={{color:'var(--tx3)',fontSize:13,padding:'2px 6px',borderRadius:4}}
+                    style={{color:'var(--tx3)',fontSize:13,padding:'2px 6px',borderRadius:4,flexShrink:0}}
                     onMouseEnter={e=>e.currentTarget.style.color='var(--rd)'}
                     onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✕</button>
                 </div>
               ))}
+
+              {/* Add item row for this location */}
+              {adding?.locName===locName
+                ?<div style={{display:'flex',gap:6,alignItems:'center',marginTop:4}}
+                    onClick={e=>e.stopPropagation()}>
+                    <input ref={addRef} value={addName} onChange={e=>setAddName(e.target.value)}
+                      onKeyDown={e=>e.key==='Enter'&&confirmAdd(locName)}
+                      placeholder="Item name…"
+                      style={{flex:1,background:'var(--sf2)',border:'1px solid var(--am)',borderRadius:6,
+                        padding:'5px 9px',color:'var(--tx)',outline:'none',fontSize:13}}/>
+                    <div style={{display:'flex',alignItems:'center',gap:3,flexShrink:0}}>
+                      <button onClick={()=>setAddQty(q=>Math.max(1,q-1))}
+                        style={{width:22,height:22,borderRadius:4,background:'var(--sf3)',fontSize:15,
+                          display:'flex',alignItems:'center',justifyContent:'center'}}>−</button>
+                      <span style={{width:20,textAlign:'center',fontSize:13,fontWeight:600}}>{addQty}</span>
+                      <button onClick={()=>setAddQty(q=>Math.min(20,q+1))}
+                        style={{width:22,height:22,borderRadius:4,background:'var(--sf3)',fontSize:15,
+                          display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
+                    </div>
+                    <button onClick={()=>confirmAdd(locName)}
+                      style={{padding:'5px 10px',borderRadius:6,background:'var(--am)',
+                        color:'#1a0e00',fontWeight:700,fontSize:12,flexShrink:0}}>Add</button>
+                    <button onClick={()=>{setAdding(null);setAddName('');setAddQty(1);}}
+                      style={{color:'var(--tx3)',fontSize:13,padding:'4px 6px',borderRadius:4,flexShrink:0}}>✕</button>
+                  </div>
+                :<button onClick={e=>{e.stopPropagation();setAdding({locName});setAddName('');setAddQty(1);}}
+                    style={{marginTop:4,width:'100%',padding:'5px',borderRadius:6,fontSize:12,
+                      border:'1px dashed var(--bd)',color:'var(--tx3)',display:'flex',
+                      alignItems:'center',justifyContent:'center',gap:4}}>
+                    <span style={{fontSize:14}}>+</span> Add item to {locName}
+                  </button>
+              }
             </div>
           </div>
         ))}
-        {tpl.assignments.length===0&&<div style={{fontSize:13,color:'var(--tx3)',textAlign:'center',
-          padding:'12px 0'}}>No items left — delete this template.</div>}
+
+        {/* Add a new location to template */}
+        {showNewLoc
+          ?<div style={{display:'flex',gap:8,alignItems:'center'}} onClick={e=>e.stopPropagation()}>
+              <input ref={newLocRef} value={newLocName} onChange={e=>setNewLocName(e.target.value)}
+                onKeyDown={e=>{
+                  if(e.key==='Enter'&&newLocName.trim()){
+                    setAdding({locName:newLocName.trim()});
+                    setShowNewLoc(false);setAddName('');setAddQty(1);
+                  }
+                  if(e.key==='Escape'){setShowNewLoc(false);setNewLocName('');}
+                }}
+                placeholder="Location name (e.g. Carry-on)…"
+                style={{flex:1,background:'var(--sf2)',border:'1px solid var(--am)',borderRadius:6,
+                  padding:'6px 10px',color:'var(--tx)',outline:'none',fontSize:13}}/>
+              <button onClick={()=>{
+                  if(newLocName.trim()){setAdding({locName:newLocName.trim()});setShowNewLoc(false);setAddName('');setAddQty(1);}
+                }} style={{padding:'6px 12px',borderRadius:6,background:'var(--am)',
+                  color:'#1a0e00',fontWeight:700,fontSize:12}}>Next</button>
+              <button onClick={()=>{setShowNewLoc(false);setNewLocName('');}}
+                style={{color:'var(--tx3)',fontSize:13,padding:'4px 6px',borderRadius:4}}>✕</button>
+            </div>
+          :<button onClick={e=>{e.stopPropagation();setShowNewLoc(true);setNewLocName('');}}
+              style={{padding:'7px',borderRadius:7,fontSize:12,border:'1px dashed var(--bd)',
+                color:'var(--tx3)',display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
+              <span style={{fontSize:14}}>+</span> Add new location
+            </button>
+        }
+
+        {tpl.assignments.length===0&&<div style={{fontSize:13,color:'var(--tx3)',
+          textAlign:'center',padding:'8px 0'}}>No items — add some or delete this template.</div>}
       </div>}
     </div>
 
@@ -1178,15 +1326,17 @@ function TemplateCard({tpl,trips,onRename,onRemoveItem,onDelete,onApplyToTrip}){
 }
 
 function HomeScreen({trips,templates,onCreate,onSelect,onDelete,onRename,onDeleteTemplate,
-  onRenameTemplate,onRemoveTemplateItem,onApplyTemplateToTrip}){
+  onRenameTemplate,onRemoveTemplateItem,onUpdateTemplateItemQty,onAddTemplateItem,onApplyTemplateToTrip}){
   const [tab,setTab]=useState('trips');
   const [name,setName]=useState('');
   const [renamingId,setRenamingId]=useState(null);
   const [renameVal,setRenameVal]=useState('');
+  const{ask:confirm,el:confirmEl}=useConfirm();
   const fmt=ts=>new Date(ts).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
   const saveRename=id=>{if(renameVal.trim())onRename(id,renameVal.trim());setRenamingId(null);};
 
   return <div style={{flex:1,overflowY:'auto',padding:'32px 20px'}}>
+    {confirmEl}
     <div style={{maxWidth:680,margin:'0 auto'}}>
 
       <div className="bb" style={{fontSize:64,color:'var(--am)',letterSpacing:6,lineHeight:1,marginBottom:6}}>
@@ -1275,7 +1425,7 @@ function HomeScreen({trips,templates,onCreate,onSelect,onDelete,onRename,onDelet
                 style={{color:'var(--tx3)',fontSize:14,padding:'4px 8px',borderRadius:5,flexShrink:0}}
                 onMouseEnter={e=>e.currentTarget.style.color='var(--am)'}
                 onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✎</button>
-              <button onClick={e=>{e.stopPropagation();if(window.confirm(`Delete "${t.name}"?`))onDelete(t.id);}}
+              <button onClick={e=>{e.stopPropagation();confirm(`Delete "${t.name}"? This cannot be undone.`,()=>onDelete(t.id));}}
                 style={{color:'var(--tx3)',fontSize:16,padding:'4px 8px',borderRadius:5,flexShrink:0}}
                 onMouseEnter={e=>e.currentTarget.style.color='var(--rd)'}
                 onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✕</button>
@@ -1295,6 +1445,8 @@ function HomeScreen({trips,templates,onCreate,onSelect,onDelete,onRename,onDelet
           <TemplateCard key={tpl.id} tpl={tpl} trips={trips}
             onRename={name=>onRenameTemplate(tpl.id,name)}
             onRemoveItem={idx=>onRemoveTemplateItem(tpl.id,idx)}
+            onUpdateQty={(idx,qty)=>onUpdateTemplateItemQty(tpl.id,idx,qty)}
+            onAddItem={a=>onAddTemplateItem(tpl.id,a)}
             onDelete={()=>onDeleteTemplate(tpl.id)}
             onApplyToTrip={tripId=>onApplyTemplateToTrip(tpl.id,tripId)}/>
         ))}
@@ -1375,6 +1527,7 @@ function AuthScreen(){
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState('');
   const [message,setMessage]=useState('');
+  const pwRef=useRef();
 
   const handle=async()=>{
     if(!email||!password)return;
@@ -1390,6 +1543,15 @@ function AuthScreen(){
       }
     }catch(e){setError(e.message);}
     setLoading(false);
+  };
+
+  const forgotPassword=async()=>{
+    if(!email){setError('Enter your email address above first.');return;}
+    setLoading(true);setError('');
+    const{error:e}=await sb.auth.resetPasswordForEmail(email);
+    setLoading(false);
+    if(e)setError(e.message);
+    else setMessage('Password reset email sent — check your inbox.');
   };
 
   return <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:40}}>
@@ -1417,18 +1579,27 @@ function AuthScreen(){
           <div style={{fontSize:11,color:'var(--tx3)',marginBottom:5,
             textTransform:'uppercase',letterSpacing:.7}}>Email</div>
           <input type="email" value={email} onChange={e=>setEmail(e.target.value)}
-            onKeyDown={e=>e.key==='Enter'&&handle()} autoFocus
+            onKeyDown={e=>e.key==='Enter'&&pwRef.current?.focus()} autoFocus
             style={{width:'100%',background:'var(--sf2)',border:'1px solid var(--bd)',
               borderRadius:7,padding:'10px 12px',color:'var(--tx)',outline:'none'}}/>
         </div>
-        <div style={{marginBottom:20}}>
+        <div style={{marginBottom:8}}>
           <div style={{fontSize:11,color:'var(--tx3)',marginBottom:5,
             textTransform:'uppercase',letterSpacing:.7}}>Password</div>
-          <input type="password" value={password} onChange={e=>setPassword(e.target.value)}
+          <input ref={pwRef} type="password" value={password} onChange={e=>setPassword(e.target.value)}
             onKeyDown={e=>e.key==='Enter'&&handle()}
             style={{width:'100%',background:'var(--sf2)',border:'1px solid var(--bd)',
               borderRadius:7,padding:'10px 12px',color:'var(--tx)',outline:'none'}}/>
         </div>
+
+        {mode==='signin'&&<div style={{textAlign:'right',marginBottom:16}}>
+          <button onClick={forgotPassword} disabled={loading}
+            style={{fontSize:11,color:'var(--tx3)',padding:'2px 0',
+              textDecoration:'underline',background:'none'}}>
+            Forgot password?
+          </button>
+        </div>}
+        {mode==='signup'&&<div style={{marginBottom:16}}/>}
 
         {error&&<div style={{color:'var(--rd)',fontSize:12,marginBottom:14,padding:'8px 10px',
           background:'rgba(240,82,82,.08)',borderRadius:6,border:'1px solid rgba(240,82,82,.2)'}}>
@@ -1464,8 +1635,10 @@ function App(){
   const [drawerItem,setDrawerItem]=useState(null);
   const [pickerLoc,setPickerLoc]=useState(null);
   const [modal,setModal]=useState(null);
+  const [saveStatus,setSaveStatus]=useState('idle'); // idle | saving | saved | error
   const loaded=useRef(false);
   const saveTimer=useRef(null);
+  const lastSaved=useRef(null); // JSON snapshot of last successfully saved data
 
   useEffect(()=>{
     sb.auth.getSession().then(({data:{session}})=>{
@@ -1479,14 +1652,19 @@ function App(){
   },[]);
 
   useEffect(()=>{
-    if(!user){setTrips([]);setTemplates([]);setRowId(null);loaded.current=false;return;}
+    if(!user){setTrips([]);setTemplates([]);setRowId(null);loaded.current=false;lastSaved.current=null;return;}
     setDataLoading(true);
     sb.from('packr_trips').select('id,data').eq('user_id',user.id).limit(1)
-      .then(({data:rows})=>{
+      .then(({data:rows,error})=>{
+        if(error){console.error('Load failed:',error);setDataLoading(false);return;}
         if(rows&&rows.length>0){
           setRowId(rows[0].id);
-          setTrips(rows[0].data?.trips||[]);
-          setTemplates(rows[0].data?.templates||[]);
+          const trips=rows[0].data?.trips||[];
+          const templates=rows[0].data?.templates||[];
+          setTrips(trips);
+          setTemplates(templates);
+          // Snapshot what we just loaded so the save effect skips this initial state
+          lastSaved.current=JSON.stringify({trips,templates});
         }
         setDataLoading(false);
         loaded.current=true;
@@ -1495,22 +1673,36 @@ function App(){
 
   useEffect(()=>{
     if(!loaded.current||!user)return;
+    // Skip if nothing actually changed since last save
+    const snapshot=JSON.stringify({trips,templates});
+    if(snapshot===lastSaved.current)return;
     if(saveTimer.current)clearTimeout(saveTimer.current);
+    setSaveStatus('saving');
     saveTimer.current=setTimeout(async()=>{
-      const payload={user_id:user.id,data:{trips,templates},updated_at:new Date().toISOString()};
-      if(rowId){
-        await sb.from('packr_trips').update(payload).eq('id',rowId);
-      }else{
-        const{data:row}=await sb.from('packr_trips').insert(payload).select('id').single();
-        if(row)setRowId(row.id);
+      try{
+        const payload={user_id:user.id,data:{trips,templates},updated_at:new Date().toISOString()};
+        if(rowId){
+          const{error}=await sb.from('packr_trips').update(payload).eq('id',rowId);
+          if(error)throw error;
+        }else{
+          const{data:row,error}=await sb.from('packr_trips').insert(payload).select('id').single();
+          if(error)throw error;
+          if(row)setRowId(row.id);
+        }
+        lastSaved.current=snapshot;
+        setSaveStatus('saved');
+        setTimeout(()=>setSaveStatus('idle'),2000);
+      }catch(e){
+        console.error('Save failed:',e);
+        setSaveStatus('error');
       }
-    },1500);
+    },3000); // 3s debounce — imperceptible for packing, halves write frequency vs 1.5s
   },[trips,templates]);
 
   const signOut=()=>{
     sb.auth.signOut();
     setScreen('home');setActiveId(null);setDrawerItem(null);setPickerLoc(null);
-    loaded.current=false;
+    loaded.current=false;lastSaved.current=null;
   };
 
   const trip=trips.find(t=>t.id===activeId)||null;
@@ -1523,15 +1715,15 @@ function App(){
   const addLoc=name=>mut(t=>({...t,locations:[...t.locations,
     {id:genId(),name,color:LOC_COLORS[t.locations.length%LOC_COLORS.length],bagWeight:0}]}));
   const delLoc=id=>{
-    if(window.confirm('Delete this location and all its items?'))
-      mut(t=>({...t,locations:t.locations.filter(l=>l.id!==id),
-        assignments:t.assignments.filter(a=>a.locationId!==id)}));
+    mut(t=>({...t,locations:t.locations.filter(l=>l.id!==id),
+      assignments:t.assignments.filter(a=>a.locationId!==id)}));
   };
   const renameLoc=(id,name)=>mut(t=>({...t,locations:t.locations.map(l=>l.id===id?{...l,name}:l)}));
   const renameItem=(id,name)=>mut(t=>({...t,items:t.items.map(i=>i.id===id?{...i,name}:i)}));
   const setItemWeight=(id,weight)=>mut(t=>({...t,items:t.items.map(i=>i.id===id?{...i,weight}:i)}));
   const setLocBagWeight=(id,bagWeight)=>mut(t=>({...t,locations:t.locations.map(l=>l.id===id?{...l,bagWeight}:l)}));
   const delItem=id=>mut(t=>({...t,items:t.items.filter(i=>i.id!==id),assignments:t.assignments.filter(a=>a.itemId!==id)}));
+  const resetPacked=()=>mut(t=>({...t,assignments:t.assignments.map(a=>({...a,packed:false}))}));
 
   // Templates
   const saveTemplate=(name)=>{
@@ -1548,6 +1740,10 @@ function App(){
   const renameTemplate=(id,name)=>setTemplates(ts=>ts.map(t=>t.id===id?{...t,name}:t));
   const removeTemplateItem=(templateId,idx)=>setTemplates(ts=>ts.map(t=>
     t.id===templateId?{...t,assignments:t.assignments.filter((_,i)=>i!==idx)}:t));
+  const updateTemplateItemQty=(templateId,idx,qty)=>setTemplates(ts=>ts.map(t=>
+    t.id===templateId?{...t,assignments:t.assignments.map((a,i)=>i===idx?{...a,quantity:qty}:a)}:t));
+  const addTemplateItem=(templateId,assignment)=>setTemplates(ts=>ts.map(t=>
+    t.id===templateId?{...t,assignments:[...t.assignments,assignment]}:t));
   const applyTemplate=(templateId,targetTripId)=>{
     const tpl=templates.find(t=>t.id===templateId);
     const tid=targetTripId||activeId;
@@ -1591,6 +1787,7 @@ function App(){
       <div style={{display:'flex',alignItems:'center',padding:'0 16px',height:54,
         background:'var(--sf)',borderBottom:'1px solid var(--bd)',flexShrink:0}}>
         <div className="bb" style={{fontSize:24,color:'var(--am)',letterSpacing:3,flex:1}}>PACKR</div>
+        <SaveIndicator status={saveStatus}/>
         <DisplayName user={user} onUpdate={u=>setUser(u)}/>
         <button onClick={signOut} style={{fontSize:12,color:'var(--tx3)',padding:'5px 10px',
           borderRadius:6,border:'1px solid var(--bd)',background:'var(--sf2)',marginLeft:8,flexShrink:0,whiteSpace:'nowrap'}}>
@@ -1602,6 +1799,8 @@ function App(){
         onDeleteTemplate={delTemplate}
         onRenameTemplate={renameTemplate}
         onRemoveTemplateItem={removeTemplateItem}
+        onUpdateTemplateItemQty={updateTemplateItemQty}
+        onAddTemplateItem={addTemplateItem}
         onApplyTemplateToTrip={(templateId,tripId)=>{
           setActiveId(tripId);
           applyTemplate(templateId,tripId);
@@ -1615,6 +1814,7 @@ function App(){
         onSignOut={signOut} user={user} onUpdateUser={u=>setUser(u)}
         onSaveTemplate={()=>setModal({type:'save-template'})}
         onApplyTemplate={()=>setModal({type:'apply-template'})}
+        saveStatus={saveStatus}
         view={view} onView={setView}/>
       {view==='board'
         ?<Board trip={trip}
@@ -1625,7 +1825,7 @@ function App(){
             onRenameLoc={id=>setModal({type:'rename-loc',id})}
             onSetBagWeight={id=>setModal({type:'set-bag-weight',id})}
             onDelLoc={delLoc}/>
-        :<Summary trip={trip}/>
+        :<Summary trip={trip} onResetPacked={resetPacked}/>
       }
 
       {activeItem&&<ItemDrawer item={activeItem} locations={trip.locations}
