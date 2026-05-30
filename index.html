@@ -370,6 +370,17 @@ function PackBox({packed,onChange}){
 /* ── ITEM CARD (board) ───────────────────────────────────────────── */
 const IS_TOUCH_PRIMARY=window.matchMedia('(hover:none)').matches;
 
+// Walk up DOM to find first scrollable ancestor
+const findScrollable=el=>{
+  let n=el;
+  while(n&&n!==document.body){
+    const s=window.getComputedStyle(n);
+    if(/(auto|scroll)/.test(s.overflowY)&&n.scrollHeight>n.clientHeight) return n;
+    n=n.parentElement;
+  }
+  return null;
+};
+
 function ItemCard({item,a,locColor,onToggle,onQty,onOpen,onDragStart,onDragEnter,onDragEnd,showInsertLine,sort='personal'}){
   const canDrag=!a.packed&&sort==='personal';
 
@@ -390,17 +401,38 @@ function ItemCard({item,a,locColor,onToggle,onQty,onOpen,onDragStart,onDragEnter
     });
     document.body.appendChild(ghost);
 
+    let scrollEl=null;
+    let scrollTimer=null;
+
     const move=ev=>{
       ev.preventDefault();
       const t=ev.touches[0];
       ghost.style.left=t.clientX+'px';
       ghost.style.top=t.clientY+'px';
+
+      // Find drop target
       const el=document.elementFromPoint(t.clientX,t.clientY);
       const card=el?.closest('[data-assignid]');
       if(card&&card.dataset.assignid!==a.id) onDragEnter(card.dataset.assignid);
+
+      // Auto-scroll: find scrollable container and scroll when near edges
+      if(!scrollEl) scrollEl=findScrollable(el);
+      if(scrollEl){
+        const rect=scrollEl.getBoundingClientRect();
+        const ZONE=80,SPEED=6;
+        clearTimeout(scrollTimer);
+        if(t.clientY-rect.top<ZONE){
+          const step=()=>{scrollEl.scrollBy(0,-SPEED);scrollTimer=setTimeout(step,16);};
+          step();
+        }else if(rect.bottom-t.clientY<ZONE){
+          const step=()=>{scrollEl.scrollBy(0,SPEED);scrollTimer=setTimeout(step,16);};
+          step();
+        }
+      }
     };
     const end=()=>{
       ghost.remove();
+      clearTimeout(scrollTimer);
       onDragEnd();
       document.removeEventListener('touchmove',move);
       document.removeEventListener('touchend',end);
@@ -444,7 +476,7 @@ function ItemCard({item,a,locColor,onToggle,onQty,onOpen,onDragStart,onDragEnter
 }
 
 /* ── LOCATION COLUMN ─────────────────────────────────────────────── */
-function LocCol({loc,items,assignments,onAdd,onToggle,onQty,onOpen,onRename,onSetBagWeight,onSetWeightLimit,onDel,onReorder,onPackAll,sort='personal'}){
+function LocCol({loc,items,assignments,onAdd,onToggle,onQty,onOpen,onRename,onSetBagWeight,onSetWeightLimit,onDel,onReorder,onPackAll,onUnpackAll,sort='personal'}){
   const [menu,setMenu]=useState(false);
   const [dragId,setDragId]=useState(null);
   const [overId,setOverId]=useState(null);
@@ -578,18 +610,28 @@ function LocCol({loc,items,assignments,onAdd,onToggle,onQty,onOpen,onRename,onSe
       </div>
     </div>
 
-    <div style={{padding:8,borderTop:'1px solid var(--bd)',flexShrink:0,display:'flex',gap:6}}>
-      {unpackedRows.length>0&&<button onClick={onPackAll}
-        style={{flex:1,padding:'7px',borderRadius:7,background:'var(--sf2)',
-          border:'1px solid var(--gn)',color:'var(--gn)',fontSize:12,fontWeight:600,
-          display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
-        ✓ Pack all
-      </button>}
-      <button onClick={onAdd} style={{flex:1,padding:'7px',borderRadius:7,
-        background:'var(--sf2)',border:'1px dashed var(--bd)',
-        color:'var(--tx3)',fontSize:13,display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+    <div style={{padding:8,borderTop:'1px solid var(--bd)',flexShrink:0}}>
+      {/* Add item — primary action */}
+      <button onClick={onAdd} style={{width:'100%',padding:'9px',borderRadius:7,
+        background:'var(--am)',color:'#1a0e00',fontWeight:700,fontSize:13,
+        display:'flex',alignItems:'center',justifyContent:'center',gap:6,marginBottom:6}}>
         <span style={{fontSize:16}}>+</span> Add item
       </button>
+      {/* Pack / Unpack all — secondary */}
+      {la.length>0&&<div style={{display:'flex',gap:6}}>
+        {unpackedRows.length>0&&<button onClick={()=>confirm('Mark all items in this bag as packed?',onPackAll,false)}
+          style={{flex:1,padding:'5px',borderRadius:6,fontSize:11,fontWeight:600,
+            background:'transparent',border:'1px solid var(--sf3)',color:'var(--tx3)',
+            display:'flex',alignItems:'center',justifyContent:'center',gap:3}}>
+          ✓ Pack all
+        </button>}
+        {packedRows.length>0&&<button onClick={()=>confirm('Mark all items in this bag as unpacked?',onUnpackAll,false)}
+          style={{flex:1,padding:'5px',borderRadius:6,fontSize:11,fontWeight:600,
+            background:'transparent',border:'1px solid var(--sf3)',color:'var(--tx3)',
+            display:'flex',alignItems:'center',justifyContent:'center',gap:3}}>
+          ↺ Unpack all
+        </button>}
+      </div>}
     </div>
   </div>;
 }
@@ -1337,7 +1379,7 @@ function BagWeightModal({loc,onClose,onSave}){
 }
 
 /* ── BOARD ───────────────────────────────────────────────────────── */
-function Board({trip,onAdd,onToggle,onQty,onOpen,onAddLoc,onRenameLoc,onSetBagWeight,onSetWeightLimit,onDelLoc,onReorder,onPackAll}){
+function Board({trip,onAdd,onToggle,onQty,onOpen,onAddLoc,onRenameLoc,onSetBagWeight,onSetWeightLimit,onDelLoc,onReorder,onPackAll,onUnpackAll}){
   const [activeIdx,setActiveIdx]=useState(0);
   const [sort,setSort]=useState('personal');
   const scrollRef=useRef();
@@ -1379,6 +1421,7 @@ function Board({trip,onAdd,onToggle,onQty,onOpen,onAddLoc,onRenameLoc,onSetBagWe
           onDel={()=>onDelLoc(loc.id)}
           onReorder={onReorder}
           onPackAll={()=>onPackAll(loc.id)}
+          onUnpackAll={()=>onUnpackAll(loc.id)}
           sort={sort}/>
       ))}
       <button onClick={onAddLoc} className="board-add-loc"
@@ -1748,17 +1791,64 @@ function TemplateLocationPicker({takenLocNames,onClose,onPick}){
 }
 
 /* ── TEMPLATE CARD ───────────────────────────────────────────────── */
-function TemplateCard({tpl,trips,sort='personal',onRename,onRemoveItem,onUpdateQty,onAddItem,onDelete,onApplyToTrip,onCreateAndApply}){
+function TemplateCard({tpl,trips,sort='personal',dragHandle,onRename,onRemoveItem,onUpdateQty,onAddItem,onReorderItems,onDelete,onApplyToTrip,onCreateAndApply}){
   const [expanded,setExpanded]=useState(false);
   const [renaming,setRenaming]=useState(false);
   const [val,setVal]=useState('');
   const [pickingTrip,setPickingTrip]=useState(false);
   const [newTripName,setNewTripName]=useState('');
   const [creatingNew,setCreatingNew]=useState(false);
+  const [dragFromIdx,setDragFromIdx]=useState(null);
+  const [dragOverIdx,setDragOverIdx]=useState(null);
+  const dragFromRef=useRef(null);
+  const dragOverRef=useRef(null);
   const newTripRef=useRef();
   const iRef=useRef();
   const{ask:confirm,el:confirmEl}=useConfirm();
-  const fmt=ts=>new Date(ts).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
+
+  const startTplDrag=idx=>{setDragFromIdx(idx);dragFromRef.current=idx;};
+  const enterTplDrag=idx=>{setDragOverIdx(idx);dragOverRef.current=idx;};
+  const endTplDrag=()=>{
+    const from=dragFromRef.current;
+    const to=dragOverRef.current;
+    if(from!==null&&to!==null&&from!==to) onReorderItems(from,to);
+    setDragFromIdx(null);setDragOverIdx(null);
+    dragFromRef.current=null;dragOverRef.current=null;
+  };
+
+  const tplHandleTouchStart=(e,idx,itemName)=>{
+    e.stopPropagation();
+    startTplDrag(idx);
+    const ghost=document.createElement('div');
+    ghost.textContent=itemName;
+    Object.assign(ghost.style,{
+      position:'fixed',left:'-9999px',top:'-9999px',zIndex:9999,pointerEvents:'none',
+      background:'var(--am)',color:'#1a0e00',padding:'8px 14px',borderRadius:8,
+      fontSize:13,fontWeight:700,boxShadow:'0 8px 24px rgba(0,0,0,.5)',
+      opacity:'0.92',whiteSpace:'nowrap',transform:'translate(-50%,-180%)',
+    });
+    document.body.appendChild(ghost);
+    let scrollEl=null;let scrollTimer=null;
+    const move=ev=>{
+      ev.preventDefault();
+      const t=ev.touches[0];
+      ghost.style.left=t.clientX+'px';ghost.style.top=t.clientY+'px';
+      const el=document.elementFromPoint(t.clientX,t.clientY);
+      const row=el?.closest('[data-tplidx]');
+      if(row&&parseInt(row.dataset.tplidx)!==idx) enterTplDrag(parseInt(row.dataset.tplidx));
+      if(!scrollEl)scrollEl=findScrollable(el);
+      if(scrollEl){
+        const rect=scrollEl.getBoundingClientRect();const ZONE=80,SPEED=6;
+        clearTimeout(scrollTimer);
+        if(t.clientY-rect.top<ZONE){const step=()=>{scrollEl.scrollBy(0,-SPEED);scrollTimer=setTimeout(step,16);};step();}
+        else if(rect.bottom-t.clientY<ZONE){const step=()=>{scrollEl.scrollBy(0,SPEED);scrollTimer=setTimeout(step,16);};step();}
+      }
+    };
+    const end=()=>{ghost.remove();clearTimeout(scrollTimer);endTplDrag();
+      document.removeEventListener('touchmove',move);document.removeEventListener('touchend',end);};
+    document.addEventListener('touchmove',move,{passive:false});
+    document.addEventListener('touchend',end);
+  };
 
   const startRename=e=>{e.stopPropagation();setVal(tpl.name);setRenaming(true);};
   const saveRename=()=>{if(val.trim())onRename(val.trim());setRenaming(false);};
@@ -1784,49 +1874,61 @@ function TemplateCard({tpl,trips,sort='personal',onRename,onRemoveItem,onUpdateQ
     <div style={{background:'var(--sf)',border:'1px solid var(--bd)',borderRadius:10,overflow:'hidden'}}>
 
       {/* Header row */}
-      <div style={{padding:'14px 16px',display:'flex',alignItems:'center',gap:12,cursor:'pointer'}}
-        onClick={()=>setExpanded(x=>!x)}>
+      <div style={{padding:'14px 16px',display:'flex',alignItems:'center',gap:8,
+        cursor:renaming?'default':'pointer'}}
+        onClick={()=>!renaming&&setExpanded(x=>!x)}>
+        {dragHandle}
         <div style={{flex:1,minWidth:0}}>
-          {renaming
-            ?<div style={{display:'flex',gap:8}} onClick={e=>e.stopPropagation()}>
-                <input ref={iRef} value={val} onChange={e=>setVal(e.target.value)}
-                  onKeyDown={e=>{if(e.key==='Enter')saveRename();if(e.key==='Escape')setRenaming(false);}}
-                  onBlur={saveRename}
-                  style={{flex:1,background:'var(--sf2)',border:'1px solid var(--am)',borderRadius:6,
-                    padding:'4px 9px',color:'var(--tx)',outline:'none',fontSize:14,fontWeight:700}}/>
-              </div>
-            :<div style={{display:'flex',alignItems:'center',gap:8}}>
-                <div style={{fontWeight:700,fontSize:15,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                  {tpl.name}
-                </div>
-                <button onClick={startRename}
-                  style={{fontSize:12,color:'var(--tx3)',padding:'2px 5px',borderRadius:4,flexShrink:0}}
-                  onMouseEnter={e=>e.currentTarget.style.color='var(--am)'}
-                  onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✎</button>
-              </div>
-          }
-          <div style={{fontSize:11,color:'var(--tx3)',marginTop:3}}>
-            {tpl.assignments.length} item{tpl.assignments.length!==1?'s':''} across {Object.keys(byLoc).length} location{Object.keys(byLoc).length!==1?'s':''} · {fmt(tpl.createdAt)}
+          <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
+            <div style={{fontWeight:700,fontSize:15,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+              {tpl.name}
+            </div>
+            {!renaming&&<button onClick={e=>{e.stopPropagation();startRename(e);}}
+              style={{fontSize:12,color:'var(--tx3)',padding:'2px 5px',borderRadius:4,flexShrink:0}}
+              onMouseEnter={e=>e.currentTarget.style.color='var(--am)'}
+              onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✎</button>}
+          </div>
+          <div style={{fontSize:11,color:'var(--tx3)'}}>
+            {tpl.assignments.length} item{tpl.assignments.length!==1?'s':''} across {Object.keys(byLoc).length} location{Object.keys(byLoc).length!==1?'s':''}
           </div>
         </div>
-        <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4,flexShrink:0}}>
-          <button onClick={handleApply}
-            style={{padding:'6px 14px',borderRadius:7,fontSize:12,fontWeight:700,
-              background:'var(--am)',color:'#1a0e00',border:'none'}}>
-            Apply
-          </button>
-          {noTripsMsg&&<span style={{fontSize:10,color:'var(--rd)',whiteSpace:'nowrap'}}>Create a trip first</span>}
-        </div>
-        <button onClick={e=>{e.stopPropagation();confirm(`Delete template "${tpl.name}"?`,onDelete);}}
-          style={{color:'var(--tx3)',fontSize:15,padding:'4px 8px',borderRadius:5,flexShrink:0}}
-          onMouseEnter={e=>e.currentTarget.style.color='var(--rd)'}
-          onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✕</button>
-        <span style={{color:'var(--tx3)',fontSize:12,flexShrink:0}}>{expanded?'▲':'▼'}</span>
+        {!renaming&&<>
+          <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4,flexShrink:0}}>
+            <button onClick={e=>{e.stopPropagation();handleApply(e);}}
+              style={{padding:'6px 14px',borderRadius:7,fontSize:12,fontWeight:700,
+                background:'var(--am)',color:'#1a0e00',border:'none'}}>
+              Apply
+            </button>
+            {noTripsMsg&&<span style={{fontSize:10,color:'var(--rd)',whiteSpace:'nowrap'}}>Create a trip first</span>}
+          </div>
+          <button onClick={e=>{e.stopPropagation();confirm(`Delete template "${tpl.name}"?`,onDelete);}}
+            style={{color:'var(--tx3)',fontSize:15,padding:'4px 8px',borderRadius:5,flexShrink:0}}
+            onMouseEnter={e=>e.currentTarget.style.color='var(--rd)'}
+            onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✕</button>
+          <span style={{color:'var(--tx3)',fontSize:11,flexShrink:0}}>{expanded?'▲':'▼'}</span>
+        </>}
       </div>
+
+      {/* Inline rename — full width, no overlap on mobile */}
+      {renaming&&<div style={{padding:'0 16px 12px',display:'flex',flexDirection:'column',gap:8}}
+        onClick={e=>e.stopPropagation()}>
+        <input ref={iRef} value={val} onChange={e=>setVal(e.target.value)}
+          onKeyDown={e=>{if(e.key==='Enter')saveRename();if(e.key==='Escape')setRenaming(false);}}
+          autoFocus
+          style={{width:'100%',background:'var(--sf2)',border:'1px solid var(--am)',borderRadius:7,
+            padding:'8px 12px',color:'var(--tx)',outline:'none',fontSize:14,fontWeight:700}}/>
+        <div style={{display:'flex',gap:8}}>
+          <button onClick={saveRename} style={{flex:1,padding:'8px',borderRadius:7,
+            background:'var(--am)',color:'#1a0e00',fontWeight:700,fontSize:13}}>Save</button>
+          <button onClick={()=>setRenaming(false)} style={{flex:1,padding:'8px',borderRadius:7,
+            background:'var(--sf2)',border:'1px solid var(--bd)',fontSize:13,color:'var(--tx2)'}}>Cancel</button>
+        </div>
+      </div>}
 
       {/* Expanded / edit view */}
       {expanded&&<div style={{borderTop:'1px solid var(--bd)',padding:'12px 16px',
-        display:'flex',flexDirection:'column',gap:14}}>
+        display:'flex',flexDirection:'column',gap:14}}
+        onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget)){setDragOverIdx(null);dragOverRef.current=null;}}}>
 
         {Object.entries(byLoc).map(([locName,items])=>{
           const sortedItems = sort==='personal' ? items : [...items].sort((a,b)=>{
@@ -1840,25 +1942,39 @@ function TemplateCard({tpl,trips,sort='personal',onRename,onRemoveItem,onUpdateQ
             <div style={{fontSize:10,color:'var(--tx3)',textTransform:'uppercase',
               letterSpacing:1,fontWeight:600,marginBottom:6}}>{locName}</div>
             <div style={{display:'flex',flexDirection:'column',gap:4}}>
-              {sortedItems.map(a=>(
-                <div key={a._idx} style={{display:'flex',alignItems:'center',gap:8,
-                  padding:'6px 10px',background:'var(--sf2)',borderRadius:7}}>
-                  <span style={{flex:1,fontSize:13}}>{a.itemName}</span>
-                  {/* Qty controls */}
-                  <div style={{display:'flex',alignItems:'center',gap:4,flexShrink:0}}>
-                    <button onClick={()=>a.quantity>1?onUpdateQty(a._idx,a.quantity-1):onRemoveItem(a._idx)}
-                      style={{width:22,height:22,borderRadius:4,background:'var(--sf3)',fontSize:15,
-                        display:'flex',alignItems:'center',justifyContent:'center'}}>−</button>
-                    <span style={{width:20,textAlign:'center',fontSize:13,fontWeight:600}}>{a.quantity}</span>
-                    <button onClick={()=>onUpdateQty(a._idx,a.quantity+1)}
-                      style={{width:22,height:22,borderRadius:4,background:'var(--sf3)',fontSize:15,
-                        display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
+              {sortedItems.map((a,i)=>(
+                <React.Fragment key={a._idx}>
+                  {dragOverIdx===a._idx&&dragFromIdx!==a._idx&&
+                    <div style={{height:3,borderRadius:2,background:'var(--am)',margin:'2px 4px'}}/>}
+                  <div
+                    data-tplidx={a._idx}
+                    draggable={sort==='personal'}
+                    onDragStart={sort==='personal'?e=>{e.dataTransfer.effectAllowed='move';startTplDrag(a._idx);}:undefined}
+                    onDragEnter={e=>{e.preventDefault();enterTplDrag(a._idx);}}
+                    onDragOver={e=>e.preventDefault()}
+                    onDragEnd={endTplDrag}
+                    style={{display:'flex',alignItems:'center',gap:8,
+                      padding:'6px 10px',background:'var(--sf2)',borderRadius:7,marginBottom:4}}>
+                    {sort==='personal'&&<span
+                      onTouchStart={IS_TOUCH_PRIMARY?e=>tplHandleTouchStart(e,a._idx,a.itemName):undefined}
+                      style={{color:'var(--tx3)',fontSize:16,flexShrink:0,cursor:'grab',
+                        userSelect:'none',touchAction:'none',padding:'2px 4px'}}>⠿</span>}
+                    <span style={{flex:1,fontSize:13}}>{a.itemName}</span>
+                    <div style={{display:'flex',alignItems:'center',gap:4,flexShrink:0}}>
+                      <button onClick={()=>a.quantity>1?onUpdateQty(a._idx,a.quantity-1):onRemoveItem(a._idx)}
+                        style={{width:22,height:22,borderRadius:4,background:'var(--sf3)',fontSize:15,
+                          display:'flex',alignItems:'center',justifyContent:'center'}}>−</button>
+                      <span style={{width:20,textAlign:'center',fontSize:13,fontWeight:600}}>{a.quantity}</span>
+                      <button onClick={()=>onUpdateQty(a._idx,a.quantity+1)}
+                        style={{width:22,height:22,borderRadius:4,background:'var(--sf3)',fontSize:15,
+                          display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
+                    </div>
+                    <button onClick={()=>onRemoveItem(a._idx)}
+                      style={{color:'var(--tx3)',fontSize:13,padding:'2px 6px',borderRadius:4,flexShrink:0}}
+                      onMouseEnter={e=>e.currentTarget.style.color='var(--rd)'}
+                      onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✕</button>
                   </div>
-                  <button onClick={()=>onRemoveItem(a._idx)}
-                    style={{color:'var(--tx3)',fontSize:13,padding:'2px 6px',borderRadius:4,flexShrink:0}}
-                    onMouseEnter={e=>e.currentTarget.style.color='var(--rd)'}
-                    onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✕</button>
-                </div>
+                </React.Fragment>
               ))}
 
               {/* Add item button for this location */}
@@ -1968,9 +2084,165 @@ function TemplateCard({tpl,trips,sort='personal',onRename,onRemoveItem,onUpdateQ
   </>;
 }
 
+/* ── TRIP CARD (sub-component so useRef is at component level) ───── */
+function TripCard({t,isOver,isRenaming,renamingId,renameVal,setRenamingId,setRenameVal,
+  saveRename,onSelect,onDuplicate,onDelete,confirm,fmt,tripDrag}){
+  const fromHandle=useRef(false);
+  const tot=t.assignments.reduce((s,a)=>s+a.quantity,0);
+  const pk=t.assignments.filter(a=>a.packed).reduce((s,a)=>s+a.quantity,0);
+  const pct=tot>0?(pk/tot)*100:0;
+  return <React.Fragment>
+    {isOver&&<div style={{height:3,borderRadius:2,background:'var(--am)',margin:'4px 0'}}/>}
+    <div
+      data-dndid={t.id}
+      draggable={!isRenaming}
+      onDragStart={!isRenaming?e=>{if(!fromHandle.current){e.preventDefault();return;}e.dataTransfer.effectAllowed='move';tripDrag.start(t.id);}:undefined}
+      onDragEnd={()=>{fromHandle.current=false;tripDrag.end();}}
+      onDragEnter={e=>{e.preventDefault();tripDrag.enter(t.id);}}
+      onDragOver={e=>e.preventDefault()}
+      style={{background:'var(--sf)',border:`1px solid ${isRenaming?'var(--am)':'var(--bd)'}`,
+        borderRadius:10,padding:'15px 18px',display:'flex',alignItems:'center',gap:10,
+        cursor:isRenaming?'default':'pointer',transition:'border-color .15s',marginBottom:10}}
+      onClick={()=>!isRenaming&&onSelect(t.id)}
+      onMouseEnter={e=>{if(!isRenaming)e.currentTarget.style.borderColor='var(--am)';}}
+      onMouseLeave={e=>{if(!isRenaming)e.currentTarget.style.borderColor='var(--bd)';}}>
+      {!isRenaming&&<span
+        onMouseDown={()=>{fromHandle.current=true;}}
+        onMouseUp={()=>{fromHandle.current=false;}}
+        onTouchStart={IS_TOUCH_PRIMARY?e=>tripDrag.touchStart(e,t.id,t.name):undefined}
+        style={{color:'var(--tx3)',fontSize:16,flexShrink:0,cursor:'grab',
+          userSelect:'none',touchAction:'none',padding:'2px 4px'}}
+        onClick={e=>e.stopPropagation()}>⠿</span>}
+      <div style={{flex:1,minWidth:0}}>
+        {isRenaming
+          ?<div style={{display:'flex',gap:8,marginBottom:8}} onClick={e=>e.stopPropagation()}>
+              <input value={renameVal} onChange={e=>setRenameVal(e.target.value)} autoFocus
+                onKeyDown={e=>{if(e.key==='Enter')saveRename(t.id);if(e.key==='Escape')setRenamingId(null);}}
+                style={{flex:1,background:'var(--sf2)',border:'1px solid var(--am)',borderRadius:6,
+                  padding:'6px 10px',color:'var(--tx)',outline:'none',fontSize:14,fontWeight:600}}/>
+              <button onClick={()=>saveRename(t.id)} style={{padding:'6px 12px',borderRadius:6,
+                background:'var(--am)',color:'#1a0e00',fontWeight:700,fontSize:13}}>✓</button>
+              <button onClick={()=>setRenamingId(null)} style={{padding:'6px 10px',borderRadius:6,
+                background:'var(--sf2)',border:'1px solid var(--bd)',fontSize:13,color:'var(--tx2)'}}>✕</button>
+            </div>
+          :<div style={{fontWeight:700,fontSize:15,marginBottom:3,
+              overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.name}</div>
+        }
+        <div style={{fontSize:11,color:'var(--tx3)',marginBottom:9}}>
+          {fmt(t.createdAt)} · {t.assignments.length} item type{t.assignments.length!==1?'s':''}
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <div style={{flex:1,height:4,background:'var(--sf3)',borderRadius:2,overflow:'hidden'}}>
+            <div style={{height:'100%',borderRadius:2,width:`${pct}%`,
+              background:pct===100?'var(--gn)':'var(--am)',transition:'width .3s'}}/>
+          </div>
+          <span style={{fontSize:11,color:'var(--tx3)',flexShrink:0}}>{pk}/{tot} packed</span>
+        </div>
+      </div>
+      {!isRenaming&&<>
+        <button onClick={e=>{e.stopPropagation();setRenamingId(t.id);setRenameVal(t.name);}}
+          title="Rename" style={{color:'var(--tx3)',fontSize:14,padding:'4px 8px',borderRadius:5,flexShrink:0}}
+          onMouseEnter={e=>e.currentTarget.style.color='var(--am)'}
+          onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✎</button>
+        <button onClick={e=>{e.stopPropagation();onDuplicate(t.id);}}
+          title="Duplicate" style={{color:'var(--tx3)',fontSize:13,padding:'4px 8px',borderRadius:5,flexShrink:0}}
+          onMouseEnter={e=>e.currentTarget.style.color='var(--am)'}
+          onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>⧉</button>
+        <button onClick={e=>{e.stopPropagation();confirm(`Delete "${t.name}"? This cannot be undone.`,()=>onDelete(t.id));}}
+          style={{color:'var(--tx3)',fontSize:16,padding:'4px 8px',borderRadius:5,flexShrink:0}}
+          onMouseEnter={e=>e.currentTarget.style.color='var(--rd)'}
+          onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✕</button>
+      </>}
+    </div>
+  </React.Fragment>;
+}
+
+/* ── TEMPLATE DRAG WRAPPER (sub-component so useRef is at component level) */
+function TemplateDragWrapper({tpl,trips,tplSort,tplDrag,isOver,
+  onRenameTemplate,onRemoveTemplateItem,onUpdateTemplateItemQty,
+  onAddTemplateItem,onReorderTemplateItems,onDeleteTemplate,
+  onApplyTemplateToTrip,onCreateTripAndApply}){
+  const fromHandle=useRef(false);
+  return <React.Fragment>
+    {isOver&&<div style={{height:3,borderRadius:2,background:'var(--am)',margin:'4px 0'}}/>}
+    <div data-dndid={tpl.id}
+      draggable
+      onDragStart={e=>{if(!fromHandle.current){e.preventDefault();return;}e.dataTransfer.effectAllowed='move';tplDrag.start(tpl.id);}}
+      onDragEnd={()=>{fromHandle.current=false;tplDrag.end();}}
+      onDragEnter={e=>{e.preventDefault();tplDrag.enter(tpl.id);}}
+      onDragOver={e=>e.preventDefault()}
+      style={{marginBottom:10}}>
+      <TemplateCard tpl={tpl} trips={trips} sort={tplSort}
+        dragHandle={<span
+          onMouseDown={()=>{fromHandle.current=true;}}
+          onMouseUp={()=>{fromHandle.current=false;}}
+          onTouchStart={IS_TOUCH_PRIMARY?e=>tplDrag.touchStart(e,tpl.id,tpl.name):undefined}
+          style={{color:'var(--tx3)',fontSize:16,flexShrink:0,cursor:'grab',
+            userSelect:'none',touchAction:'none',padding:'2px 6px'}}
+          onClick={e=>e.stopPropagation()}>⠿</span>}
+        onRename={name=>onRenameTemplate(tpl.id,name)}
+        onRemoveItem={idx=>onRemoveTemplateItem(tpl.id,idx)}
+        onUpdateQty={(idx,qty)=>onUpdateTemplateItemQty(tpl.id,idx,qty)}
+        onAddItem={a=>onAddTemplateItem(tpl.id,a)}
+        onReorderItems={(from,to)=>onReorderTemplateItems(tpl.id,from,to)}
+        onDelete={()=>onDeleteTemplate(tpl.id)}
+        onApplyToTrip={tripId=>onApplyTemplateToTrip(tpl.id,tripId)}
+        onCreateAndApply={name=>onCreateTripAndApply(tpl.id,name)}/>
+    </div>
+  </React.Fragment>;
+}
+
+/* ── DRAG LIST HOOK ──────────────────────────────────────────────── */
+function useDragList(onReorder){
+  const [dragId,setDragId]=useState(null);
+  const [overId,setOverId]=useState(null);
+  const dragRef=useRef(null);
+  const overRef=useRef(null);
+  const start=id=>{setDragId(id);dragRef.current=id;};
+  const enter=id=>{setOverId(id);overRef.current=id;};
+  const end=()=>{
+    const from=dragRef.current,to=overRef.current;
+    if(from&&to&&from!==to)onReorder(from,to);
+    setDragId(null);setOverId(null);dragRef.current=null;overRef.current=null;
+  };
+  const leave=e=>{if(!e.currentTarget?.contains(e.relatedTarget)){setOverId(null);overRef.current=null;}};
+  const touchStart=(e,id,label)=>{
+    e.stopPropagation();start(id);
+    const ghost=document.createElement('div');
+    ghost.textContent=label;
+    Object.assign(ghost.style,{position:'fixed',left:'-9999px',top:'-9999px',zIndex:9999,
+      pointerEvents:'none',background:'var(--am)',color:'#1a0e00',padding:'8px 14px',
+      borderRadius:8,fontSize:13,fontWeight:700,boxShadow:'0 8px 24px rgba(0,0,0,.5)',
+      opacity:'0.92',whiteSpace:'nowrap',transform:'translate(-50%,-180%)'});
+    document.body.appendChild(ghost);
+    let scrollEl=null,scrollTimer=null;
+    const move=ev=>{
+      ev.preventDefault();
+      const t=ev.touches[0];
+      ghost.style.left=t.clientX+'px';ghost.style.top=t.clientY+'px';
+      const el=document.elementFromPoint(t.clientX,t.clientY);
+      const row=el?.closest('[data-dndid]');
+      if(row&&row.dataset.dndid!==id)enter(row.dataset.dndid);
+      if(!scrollEl)scrollEl=findScrollable(el);
+      if(scrollEl){
+        const r=scrollEl.getBoundingClientRect();const Z=80,S=6;
+        clearTimeout(scrollTimer);
+        if(t.clientY-r.top<Z){const f=()=>{scrollEl.scrollBy(0,-S);scrollTimer=setTimeout(f,16);};f();}
+        else if(r.bottom-t.clientY<Z){const f=()=>{scrollEl.scrollBy(0,S);scrollTimer=setTimeout(f,16);};f();}
+      }
+    };
+    const up=()=>{ghost.remove();clearTimeout(scrollTimer);end();
+      document.removeEventListener('touchmove',move);document.removeEventListener('touchend',up);};
+    document.addEventListener('touchmove',move,{passive:false});
+    document.addEventListener('touchend',up);
+  };
+  return{dragId,overId,start,enter,end,leave,touchStart};
+}
+
 function HomeScreen({trips,templates,onCreate,onSelect,onDelete,onRename,onDuplicate,onDeleteTemplate,
-  onRenameTemplate,onRemoveTemplateItem,onUpdateTemplateItemQty,onAddTemplateItem,onApplyTemplateToTrip,
-  onCreateTripAndApply,onCreateTemplate}){
+  onRenameTemplate,onRemoveTemplateItem,onUpdateTemplateItemQty,onAddTemplateItem,onReorderTemplateItems,
+  onReorderTrips,onReorderTemplates,
+  onApplyTemplateToTrip,onCreateTripAndApply,onCreateTemplate}){
   const [tab,setTab]=useState('trips');
   const [name,setName]=useState('');
   const [tplName,setTplName]=useState('');
@@ -1980,6 +2252,8 @@ function HomeScreen({trips,templates,onCreate,onSelect,onDelete,onRename,onDupli
   const{ask:confirm,el:confirmEl}=useConfirm();
   const fmt=ts=>new Date(ts).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
   const saveRename=id=>{if(renameVal.trim())onRename(id,renameVal.trim());setRenamingId(null);};
+  const tripDrag=useDragList(onReorderTrips);
+  const tplDrag=useDragList(onReorderTemplates);
 
   return <div style={{flex:1,overflowY:'auto',padding:'32px 20px',paddingBottom:'calc(32px + env(safe-area-inset-bottom))'}}>
     {confirmEl}
@@ -2024,64 +2298,27 @@ function HomeScreen({trips,templates,onCreate,onSelect,onDelete,onRename,onDupli
       </div>
 
       {/* Trips tab */}
-      {tab==='trips'&&<div style={{display:'flex',flexDirection:'column',gap:10}}>
+      {tab==='trips'&&<div style={{display:'flex',flexDirection:'column',gap:0}}
+        onDragLeave={tripDrag.leave}>
         {trips.length===0&&<div style={{textAlign:'center',color:'var(--tx3)',padding:'32px 0',fontSize:14}}>
           No trips yet — create one above.
         </div>}
-        {trips.slice().sort((a,b)=>b.createdAt-a.createdAt).map(t=>{
-          const tot=t.assignments.reduce((s,a)=>s+a.quantity,0);
-          const pk=t.assignments.filter(a=>a.packed).reduce((s,a)=>s+a.quantity,0);
-          const pct=tot>0?(pk/tot)*100:0;
-          const isRenaming=renamingId===t.id;
-          return <div key={t.id}
-            style={{background:'var(--sf)',border:`1px solid ${isRenaming?'var(--am)':'var(--bd)'}`,
-              borderRadius:10,padding:'15px 18px',display:'flex',alignItems:'center',gap:14,
-              cursor:isRenaming?'default':'pointer',transition:'border-color .15s'}}
-            onClick={()=>!isRenaming&&onSelect(t.id)}
-            onMouseEnter={e=>{if(!isRenaming)e.currentTarget.style.borderColor='var(--am)';}}
-            onMouseLeave={e=>{if(!isRenaming)e.currentTarget.style.borderColor='var(--bd)';}}>
-            <div style={{flex:1,minWidth:0}}>
-              {isRenaming
-                ?<div style={{display:'flex',gap:8,marginBottom:8}} onClick={e=>e.stopPropagation()}>
-                    <input value={renameVal} onChange={e=>setRenameVal(e.target.value)} autoFocus
-                      onKeyDown={e=>{if(e.key==='Enter')saveRename(t.id);if(e.key==='Escape')setRenamingId(null);}}
-                      style={{flex:1,background:'var(--sf2)',border:'1px solid var(--am)',borderRadius:6,
-                        padding:'6px 10px',color:'var(--tx)',outline:'none',fontSize:14,fontWeight:600}}/>
-                    <button onClick={()=>saveRename(t.id)} style={{padding:'6px 12px',borderRadius:6,
-                      background:'var(--am)',color:'#1a0e00',fontWeight:700,fontSize:13}}>✓</button>
-                    <button onClick={()=>setRenamingId(null)} style={{padding:'6px 10px',borderRadius:6,
-                      background:'var(--sf2)',border:'1px solid var(--bd)',fontSize:13,color:'var(--tx2)'}}>✕</button>
-                  </div>
-                :<div style={{fontWeight:700,fontSize:15,marginBottom:3,
-                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.name}</div>
-              }
-              <div style={{fontSize:11,color:'var(--tx3)',marginBottom:9}}>
-                {fmt(t.createdAt)} · {t.assignments.length} item type{t.assignments.length!==1?'s':''}
-              </div>
-              <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <div style={{flex:1,height:4,background:'var(--sf3)',borderRadius:2,overflow:'hidden'}}>
-                  <div style={{height:'100%',borderRadius:2,width:`${pct}%`,
-                    background:pct===100?'var(--gn)':'var(--am)',transition:'width .3s'}}/>
-                </div>
-                <span style={{fontSize:11,color:'var(--tx3)',flexShrink:0}}>{pk}/{tot} packed</span>
-              </div>
-            </div>
-            {!isRenaming&&<>
-              <button onClick={e=>{e.stopPropagation();setRenamingId(t.id);setRenameVal(t.name);}}
-                title="Rename" style={{color:'var(--tx3)',fontSize:14,padding:'4px 8px',borderRadius:5,flexShrink:0}}
-                onMouseEnter={e=>e.currentTarget.style.color='var(--am)'}
-                onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✎</button>
-              <button onClick={e=>{e.stopPropagation();onDuplicate(t.id);}}
-                title="Duplicate" style={{color:'var(--tx3)',fontSize:13,padding:'4px 8px',borderRadius:5,flexShrink:0}}
-                onMouseEnter={e=>e.currentTarget.style.color='var(--am)'}
-                onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>⧉</button>
-              <button onClick={e=>{e.stopPropagation();confirm(`Delete "${t.name}"? This cannot be undone.`,()=>onDelete(t.id));}}
-                style={{color:'var(--tx3)',fontSize:16,padding:'4px 8px',borderRadius:5,flexShrink:0}}
-                onMouseEnter={e=>e.currentTarget.style.color='var(--rd)'}
-                onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✕</button>
-            </>}
-          </div>;
-        })}
+        {trips.map(t=><TripCard key={t.id} t={t}
+          isOver={tripDrag.overId===t.id&&tripDrag.dragId!==t.id}
+          isRenaming={renamingId===t.id}
+          renamingId={renamingId} renameVal={renameVal}
+          setRenamingId={setRenamingId} setRenameVal={setRenameVal}
+          saveRename={saveRename} onSelect={onSelect}
+          onDuplicate={onDuplicate} onDelete={onDelete}
+          confirm={confirm} fmt={fmt} tripDrag={tripDrag}/>)}
+        {/* Bottom drop zone */}
+        <div data-dndid="__list_bottom__"
+          onDragEnter={e=>{e.preventDefault();tripDrag.enter('__list_bottom__');}}
+          onDragOver={e=>e.preventDefault()}
+          style={{minHeight:32}}>
+          {tripDrag.overId==='__list_bottom__'&&tripDrag.dragId&&
+            <div style={{height:3,borderRadius:2,background:'var(--am)',margin:'4px 0'}}/>}
+        </div>
       </div>}
 
       {/* Templates tab */}
@@ -2117,16 +2354,27 @@ function HomeScreen({trips,templates,onCreate,onSelect,onDelete,onRename,onDupli
           padding:'16px 0',fontSize:13}}>
           No templates yet — create one above.
         </div>}
-        {(templates||[]).slice().sort((a,b)=>b.createdAt-a.createdAt).map(tpl=>(
-          <TemplateCard key={tpl.id} tpl={tpl} trips={trips} sort={tplSort}
-            onRename={name=>onRenameTemplate(tpl.id,name)}
-            onRemoveItem={idx=>onRemoveTemplateItem(tpl.id,idx)}
-            onUpdateQty={(idx,qty)=>onUpdateTemplateItemQty(tpl.id,idx,qty)}
-            onAddItem={a=>onAddTemplateItem(tpl.id,a)}
-            onDelete={()=>onDeleteTemplate(tpl.id)}
-            onApplyToTrip={tripId=>onApplyTemplateToTrip(tpl.id,tripId)}
-            onCreateAndApply={name=>onCreateTripAndApply(tpl.id,name)}/>
-        ))}
+        <div style={{display:'flex',flexDirection:'column',gap:0}} onDragLeave={tplDrag.leave}>
+        {(templates||[]).map(tpl=><TemplateDragWrapper key={tpl.id} tpl={tpl} trips={trips}
+          tplSort={tplSort} tplDrag={tplDrag}
+          isOver={tplDrag.overId===tpl.id&&tplDrag.dragId!==tpl.id}
+          onRenameTemplate={onRenameTemplate}
+          onRemoveTemplateItem={onRemoveTemplateItem}
+          onUpdateTemplateItemQty={onUpdateTemplateItemQty}
+          onAddTemplateItem={onAddTemplateItem}
+          onReorderTemplateItems={onReorderTemplateItems}
+          onDeleteTemplate={onDeleteTemplate}
+          onApplyTemplateToTrip={onApplyTemplateToTrip}
+          onCreateTripAndApply={onCreateTripAndApply}/>)}
+        {/* Bottom drop zone */}
+        <div data-dndid="__list_bottom__"
+          onDragEnter={e=>{e.preventDefault();tplDrag.enter('__list_bottom__');}}
+          onDragOver={e=>e.preventDefault()}
+          style={{minHeight:32,borderRadius:7}}>
+          {tplDrag.overId==='__list_bottom__'&&tplDrag.dragId&&
+            <div style={{height:3,borderRadius:2,background:'var(--am)',margin:'4px 0'}}/>}
+        </div>
+        </div>
       </div>}
     </div>
   </div>;
@@ -2415,6 +2663,15 @@ function App(){
   const addTrip=name=>{const t=mkTrip(name);setTrips(ts=>[...ts,t]);setActiveId(t.id);setScreen('trip');setView('board');};
   const delTrip=id=>{setTrips(ts=>ts.filter(t=>t.id!==id));if(activeId===id){setActiveId(null);setScreen('home');}};
   const renameTrip=(id,name)=>setTrips(ts=>ts.map(t=>t.id===id?{...t,name}:t));
+  const reorderTrips=(fromId,toId)=>setTrips(ts=>{
+    const all=[...ts];
+    const fi=all.findIndex(t=>t.id===fromId);
+    if(fi===-1)return ts;
+    if(toId==='__list_bottom__'){const[m]=all.splice(fi,1);all.push(m);return all;}
+    const ti=all.findIndex(t=>t.id===toId);
+    if(ti===-1||fi===ti)return ts;
+    const[moved]=all.splice(fi,1);all.splice(fi<ti?ti-1:ti,0,moved);return all;
+  });
   const duplicateTrip=id=>{
     const src=trips.find(t=>t.id===id);
     if(!src)return;
@@ -2450,6 +2707,8 @@ function App(){
   const resetPacked=()=>mut(t=>({...t,assignments:t.assignments.map(a=>({...a,packed:false}))}));
   const packAllInLoc=locId=>mut(t=>({...t,assignments:t.assignments.map(a=>
     a.locationId===locId?{...a,packed:true}:a)}));
+  const unpackAllInLoc=locId=>mut(t=>({...t,assignments:t.assignments.map(a=>
+    a.locationId===locId?{...a,packed:false}:a)}));
   const reorderAssignment=(locationId,fromId,toId)=>mut(t=>{
     const all=[...t.assignments];
     const fi=all.findIndex(a=>a.id===fromId);
@@ -2485,12 +2744,29 @@ function App(){
   const createTemplate=name=>setTemplates(ts=>[...ts,{id:genId(),name,createdAt:Date.now(),assignments:[]}]);
   const delTemplate=id=>setTemplates(ts=>ts.filter(t=>t.id!==id));
   const renameTemplate=(id,name)=>setTemplates(ts=>ts.map(t=>t.id===id?{...t,name}:t));
+  const reorderTemplates=(fromId,toId)=>setTemplates(ts=>{
+    const all=[...ts];
+    const fi=all.findIndex(t=>t.id===fromId);
+    if(fi===-1)return ts;
+    if(toId==='__list_bottom__'){const[m]=all.splice(fi,1);all.push(m);return all;}
+    const ti=all.findIndex(t=>t.id===toId);
+    if(ti===-1||fi===ti)return ts;
+    const[moved]=all.splice(fi,1);all.splice(fi<ti?ti-1:ti,0,moved);return all;
+  });
   const removeTemplateItem=(templateId,idx)=>setTemplates(ts=>ts.map(t=>
     t.id===templateId?{...t,assignments:t.assignments.filter((_,i)=>i!==idx)}:t));
   const updateTemplateItemQty=(templateId,idx,qty)=>setTemplates(ts=>ts.map(t=>
     t.id===templateId?{...t,assignments:t.assignments.map((a,i)=>i===idx?{...a,quantity:qty}:a)}:t));
   const addTemplateItem=(templateId,assignment)=>setTemplates(ts=>ts.map(t=>
     t.id===templateId?{...t,assignments:[...t.assignments,assignment]}:t));
+  const reorderTemplateItems=(templateId,fromIdx,toIdx)=>setTemplates(ts=>ts.map(t=>{
+    if(t.id!==templateId)return t;
+    const all=[...t.assignments];
+    const[moved]=all.splice(fromIdx,1);
+    const insertAt=fromIdx<toIdx?toIdx-1:toIdx;
+    all.splice(insertAt,0,moved);
+    return{...t,assignments:all};
+  }));
   const applyTemplate=(templateId,targetTripId)=>{
     const tpl=templates.find(t=>t.id===templateId);
     const tid=targetTripId||activeId;
@@ -2565,11 +2841,14 @@ function App(){
       </div>
       <HomeScreen trips={trips} templates={templates} onCreate={addTrip} onSelect={openTrip}
         onDelete={delTrip} onRename={renameTrip} onDuplicate={duplicateTrip}
+        onReorderTrips={reorderTrips}
+        onReorderTemplates={reorderTemplates}
         onDeleteTemplate={delTemplate}
         onRenameTemplate={renameTemplate}
         onRemoveTemplateItem={removeTemplateItem}
         onUpdateTemplateItemQty={updateTemplateItemQty}
         onAddTemplateItem={addTemplateItem}
+        onReorderTemplateItems={reorderTemplateItems}
         onCreateTemplate={createTemplate}
         onCreateTripAndApply={createTripAndApply}
         onApplyTemplateToTrip={(templateId,tripId)=>{
@@ -2597,7 +2876,8 @@ function App(){
             onSetWeightLimit={id=>setModal({type:'set-weight-limit',id})}
             onDelLoc={delLoc}
             onReorder={reorderAssignment}
-            onPackAll={packAllInLoc}/>
+            onPackAll={packAllInLoc}
+            onUnpackAll={unpackAllInLoc}/>
         :<Summary trip={trip} onResetPacked={resetPacked}/>
       }
 
