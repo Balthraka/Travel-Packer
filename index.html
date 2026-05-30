@@ -29,7 +29,10 @@ input,textarea{font-family:inherit;font-size:14px}
 .bb{font-family:'Bebas Neue',sans-serif;letter-spacing:1.5px}
 @keyframes chk{0%{transform:scale(1.5)}100%{transform:scale(1)}}
 @keyframes slR{from{transform:translateX(380px);opacity:0}to{transform:translateX(0);opacity:1}}
-@keyframes fdU{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fdModal{
+  from{opacity:0;transform:translate(-50%,-50%) scale(.96)}
+  to{opacity:1;transform:translate(-50%,-50%) scale(1)}
+}
 @keyframes fd{from{opacity:0}to{opacity:1}}
 
 /* ── BOARD MOBILE ── */
@@ -131,41 +134,121 @@ const DEFAULT_LOCS = [
 
 // [name, category, weightGrams]
 const ITEM_TPLS = [
-  ['Underwear','Clothing',35],['Socks – Casual','Clothing',40],['Socks – Work','Clothing',50],
-  ['Business Shirt','Clothing',200],['Linen Shirt','Clothing',180],['T-Shirt','Clothing',150],
-  ['Jumper – Formal','Clothing',400],['Jumper – Casual','Clothing',350],
-  ['Suit Pant','Clothing',400],['Suit Jacket','Clothing',600],
-  ['Chino – Navy','Clothing',450],['Chino – Tan','Clothing',450],
-  ['Pant – Lightweight','Clothing',280],['Shorts – Formal','Clothing',250],['Shorts – Casual','Clothing',180],
-  ['Bathers','Clothing',150],['Jeans','Clothing',600],['Belt','Clothing',140],['Collar Stays','Clothing',10],
-  ['Tie','Clothing',75],['Cufflinks','Clothing',30],['Jacket','Clothing',800],['Rain Jacket','Clothing',350],
-  ['Hat – Sun','Clothing',100],['Scarf','Clothing',90],['Gym Shorts','Clothing',140],['Gym Shirt','Clothing',110],
-  ['Casual Shoes','Footwear',600],['Business Shoes','Footwear',800],['Thongs','Footwear',180],
-  ['Slippers','Footwear',220],['Running Shoes','Footwear',700],
-  ['Laptop – Work','Electronics',1800],['Laptop – Personal','Electronics',1400],
-  ['Laptop Charger – Work','Electronics',190],['Laptop Charger – Personal','Electronics',190],
-  ['Mouse','Electronics',90],['Keyboard','Electronics',750],['e-Book','Electronics',190],
-  ['Powerbank','Electronics',280],['Powerboard','Electronics',380],
-  ['Headphones – Plane','Electronics',200],['Headphones – Bluetooth','Electronics',240],
-  ['USB Brick','Electronics',75],['Power Adaptor','Electronics',110],
-  ['Phone – Personal','Electronics',175],['Phone – Work','Electronics',175],
-  ['Phone Charger – Personal','Electronics',35],['Phone Charger – Work','Electronics',35],
-  ['Camera','Electronics',500],['Camera Lens','Electronics',380],
-  ['Camera Battery','Electronics',75],['Camera SD Card','Electronics',2],
-  ['Smart Watch','Electronics',45],['Watch Charger','Electronics',25],
-  ['Tablet','Electronics',450],['Tablet Charger','Electronics',75],
-  ['Glasses','Accessories',25],['Sunglasses','Accessories',25],['Water Bottle','Accessories',180],
-  ['Fan','Accessories',280],['Towel','Accessories',380],['Travel Pillow','Accessories',190],
-  ['Eye Mask','Accessories',18],['Ear Plugs','Accessories',4],['Umbrella','Accessories',260],
-  ['Watch','Accessories',80],['Luggage Lock','Accessories',35],['Laundry Bag','Accessories',45],
-  ['Packing Cubes','Accessories',130],['Cable Organiser','Accessories',70],
-  ['Passport Wallet','Documents & Finance',55],['Travel SIM','Documents & Finance',2],
-  ['Notepad','Documents & Finance',100],['Pen','Documents & Finance',18],
-  ['Wallet','Documents & Finance',75],['Cash / Currency','Documents & Finance',40],
-  ['Travel Insurance Docs','Documents & Finance',15],['Boarding Pass','Documents & Finance',5],
-  ['Toiletries','Toiletries & Health',450],['Medication','Toiletries & Health',50],
-  ['Sunscreen','Toiletries & Health',190],['Insect Repellent','Toiletries & Health',90],
-  ['Hand Sanitiser','Toiletries & Health',90],['Vitamins','Toiletries & Health',70],
+  // ── Clothing ──────────────────────────────────────────────────────
+  ['Underwear','Clothing',40],
+  ['Socks – Casual','Clothing',45],
+  ['Socks – Work','Clothing',55],
+  ['Compression Socks','Clothing',65],
+  ['Business Shirt','Clothing',220],
+  ['Linen Shirt','Clothing',180],
+  ['T-Shirt','Clothing',150],
+  ['Singlet','Clothing',100],
+  ['Bra','Clothing',70],
+  ['Jumper – Formal','Clothing',400],
+  ['Jumper – Casual','Clothing',350],
+  ['Suit Pant','Clothing',400],
+  ['Suit Jacket','Clothing',700],
+  ['Chino – Navy','Clothing',480],
+  ['Chino – Tan','Clothing',480],
+  ['Pant – Lightweight','Clothing',280],
+  ['Shorts – Formal','Clothing',250],
+  ['Shorts – Casual','Clothing',180],
+  ['Bathers','Clothing',150],
+  ['Jeans','Clothing',600],
+  ['Dress – Casual','Clothing',250],
+  ['Dress – Formal','Clothing',350],
+  ['Skirt – Casual','Clothing',180],
+  ['Skirt – Formal','Clothing',250],
+  ['Leggings','Clothing',160],
+  ['Tights','Clothing',60],
+  ['Stockings','Clothing',35],
+  ['Sarong','Clothing',120],
+  ['Pyjama Top','Clothing',180],
+  ['Pyjama Bottom','Clothing',180],
+  ['Belt','Clothing',140],
+  ['Collar Stays','Clothing',10],
+  ['Tie','Clothing',75],
+  ['Cufflinks','Clothing',30],
+  ['Jacket','Clothing',800],
+  ['Rain Jacket','Clothing',350],
+  ['Hat – Sun','Clothing',100],
+  ['Scarf','Clothing',90],
+  ['Gym Shorts','Clothing',140],
+  ['Gym Shirt','Clothing',120],
+  // ── Footwear ──────────────────────────────────────────────────────
+  ['Casual Shoes','Footwear',600],
+  ['Business Shoes','Footwear',800],
+  ['Thongs','Footwear',180],
+  ['Sandals','Footwear',280],
+  ['Slippers','Footwear',220],
+  ['Running Shoes','Footwear',700],
+  ['Shoes – Hiking','Footwear',900],
+  // ── Electronics ───────────────────────────────────────────────────
+  ['Laptop – Work','Electronics',1800],
+  ['Laptop – Personal','Electronics',1400],
+  ['Laptop Charger – Work','Electronics',190],
+  ['Laptop Charger – Personal','Electronics',190],
+  ['Mouse','Electronics',90],
+  ['Keyboard','Electronics',500],
+  ['e-Book','Electronics',190],
+  ['Powerbank','Electronics',280],
+  ['Powerboard','Electronics',420],
+  ['Headphones – Plane','Electronics',200],
+  ['Earphones – Bluetooth','Electronics',55],
+  ['USB Brick','Electronics',75],
+  ['Power Adaptor','Electronics',110],
+  ['HDMI Cable','Electronics',120],
+  ['Phone – Personal','Electronics',175],
+  ['Phone – Work','Electronics',175],
+  ['Phone Charger – Personal','Electronics',45],
+  ['Phone Charger – Work','Electronics',45],
+  ['Camera','Electronics',500],
+  ['Camera Lens','Electronics',380],
+  ['Camera Battery','Electronics',75],
+  ['Camera SD Card','Electronics',5],
+  ['GoPro','Electronics',130],
+  ['GoPro Cables','Electronics',60],
+  ['GoPro Mounts','Electronics',80],
+  ['Smart Watch','Electronics',50],
+  ['Watch Charger','Electronics',30],
+  ['Tablet','Electronics',450],
+  ['Tablet Charger','Electronics',90],
+  // ── Accessories ───────────────────────────────────────────────────
+  ['Glasses','Accessories',25],
+  ['Sunglasses','Accessories',30],
+  ['Water Bottle','Accessories',200],
+  ['Fan','Accessories',280],
+  ['Travel Pillow','Accessories',190],
+  ['Eye Mask','Accessories',18],
+  ['Ear Plugs','Accessories',4],
+  ['Umbrella','Accessories',260],
+  ['Watch','Accessories',80],
+  ['Cable Organiser','Accessories',70],
+  ['Cross Body Bag','Accessories',350],
+  ['Money Belt','Accessories',45],
+  // ── Laundry ───────────────────────────────────────────────────────
+  ['Laundry Detergent','Laundry',100],
+  ['Laundry Wash Bag','Laundry',45],
+  ['Laundry Bag','Laundry',45],
+  ['Packing Cubes','Laundry',130],
+  // ── Documents & Finance ───────────────────────────────────────────
+  ['Passport Wallet','Documents & Finance',55],
+  ['Luggage Lock','Documents & Finance',40],
+  ['Travel SIM','Documents & Finance',2],
+  ['Notepad','Documents & Finance',100],
+  ['Pen','Documents & Finance',18],
+  ['Wallet','Documents & Finance',75],
+  ['Cash / Currency','Documents & Finance',40],
+  ['Travel Insurance Docs','Documents & Finance',15],
+  ['Boarding Pass','Documents & Finance',5],
+  // ── Toiletries & Health ───────────────────────────────────────────
+  ['Toiletries','Toiletries & Health',450],
+  ['Towel','Toiletries & Health',300],
+  ['Medication','Toiletries & Health',50],
+  ['Sunscreen','Toiletries & Health',190],
+  ['Insect Repellent','Toiletries & Health',90],
+  ['Hand Sanitiser','Toiletries & Health',90],
+  ['Vitamins','Toiletries & Health',70],
   ['Lip Balm','Toiletries & Health',18],
 ];
 
@@ -195,7 +278,7 @@ function Modal({title,onClose,children,w=380}){
     <div style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',
       width:w,maxWidth:'94vw',maxHeight:'84vh',overflowY:'auto',
       background:'var(--sf)',border:'1px solid var(--bd)',borderRadius:12,padding:24,
-      zIndex:201,animation:'fdU .2s ease',boxShadow:'0 24px 64px rgba(0,0,0,.65)'}}>
+      zIndex:201,animation:'fdModal .2s ease',boxShadow:'0 24px 64px rgba(0,0,0,.65)'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
         <div className="bb" style={{fontSize:22,color:'var(--am)'}}>{title}</div>
         <button onClick={onClose} style={{color:'var(--tx2)',fontSize:20,padding:'2px 6px'}}>✕</button>
@@ -211,7 +294,7 @@ function Confirm({message,onConfirm,onCancel,danger=true}){
     <div style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',
       width:320,maxWidth:'90vw',background:'var(--sf)',border:'1px solid var(--bd)',
       borderRadius:12,padding:24,zIndex:202,boxShadow:'0 24px 64px rgba(0,0,0,.7)',
-      animation:'fdU .18s ease'}}>
+      animation:'fdModal .18s ease'}}>
       <div style={{fontSize:14,color:'var(--tx)',marginBottom:20,lineHeight:1.5}}>{message}</div>
       <div style={{display:'flex',gap:8}}>
         <button onClick={onCancel} style={{flex:1,padding:'9px',borderRadius:7,
@@ -278,56 +361,79 @@ function PackBox({packed,onChange}){
 }
 
 /* ── ITEM CARD (board) ───────────────────────────────────────────── */
-function ItemCard({item,a,locColor,onToggle,onQty,onOpen,onDragStart,onDragEnter,onDragEnd,isDragOver}){
-  const dragRef=useRef();
+function ItemCard({item,a,locColor,onToggle,onQty,onOpen,onDragStart,onDragEnter,onDragEnd,showInsertLine}){
 
-  // Touch drag support
-  const touchState=useRef({});
-  const onTouchStart=e=>{
-    if(a.packed)return;
-    touchState.current={active:true,id:a.id};
+  const onHandleTouchStart=e=>{
+    e.stopPropagation();
     onDragStart(a.id);
-  };
-  const onTouchMove=e=>{
-    if(!touchState.current.active)return;
-    e.preventDefault();
-    const t=e.touches[0];
-    const el=document.elementFromPoint(t.clientX,t.clientY);
-    const card=el?.closest('[data-assignid]');
-    if(card&&card.dataset.assignid!==a.id){
-      onDragEnter(card.dataset.assignid);
-    }
-  };
-  const onTouchEnd=()=>{touchState.current={};onDragEnd();};
 
-  return <div
-    data-assignid={a.id}
-    draggable={!a.packed}
-    onDragStart={a.packed?undefined:e=>{e.dataTransfer.effectAllowed='move';onDragStart(a.id);}}
-    onDragEnter={a.packed?undefined:e=>{e.preventDefault();onDragEnter(a.id);}}
-    onDragOver={e=>e.preventDefault()}
-    onDragEnd={a.packed?undefined:onDragEnd}
-    onTouchStart={a.packed?undefined:onTouchStart}
-    onTouchMove={a.packed?undefined:onTouchMove}
-    onTouchEnd={a.packed?undefined:onTouchEnd}
-    style={{background:isDragOver?`${locColor}22`:a.packed?`${locColor}0c`:'var(--sf2)',
-      border:`1px solid ${isDragOver?locColor:a.packed?locColor+'38':'var(--bd)'}`,
-      borderRadius:8,padding:'9px 11px',display:'flex',alignItems:'center',gap:8,
-      transition:'all .15s',opacity:a.packed?.58:1,
-      cursor:a.packed?'default':'default'}}>
-    {!a.packed&&<span
-      style={{color:'var(--tx3)',fontSize:16,cursor:'grab',flexShrink:0,
-        lineHeight:1,padding:'0 2px',userSelect:'none',touchAction:'none'}}
-      title="Drag to reorder">
-      ⠿
-    </span>}
-    <PackBox packed={a.packed} onChange={onToggle}/>
-    <span onClick={onOpen} style={{flex:1,fontSize:13,fontWeight:500,cursor:'pointer',
-      textDecoration:a.packed?'line-through':'none',color:'var(--tx)'}}>
-      {item.name}
-    </span>
-    <Qty value={a.quantity} onChange={onQty}/>
-  </div>;
+    // Create floating ghost that follows the finger
+    const ghost=document.createElement('div');
+    ghost.textContent=item.name;
+    Object.assign(ghost.style,{
+      position:'fixed',
+      left:'-9999px',   // off-screen until first touchmove
+      top:'-9999px',
+      zIndex:9999,pointerEvents:'none',
+      background:'var(--am)',color:'#1a0e00',
+      padding:'8px 14px',borderRadius:8,fontSize:13,fontWeight:700,
+      boxShadow:'0 8px 24px rgba(0,0,0,.5)',
+      opacity:'0.92',whiteSpace:'nowrap',
+      transform:'translate(-50%,-180%)',
+    });
+    document.body.appendChild(ghost);
+
+    const move=e=>{
+      e.preventDefault();
+      const t=e.touches[0];
+      ghost.style.left=t.clientX+'px';
+      ghost.style.top=t.clientY+'px';
+      const el=document.elementFromPoint(t.clientX,t.clientY);
+      const card=el?.closest('[data-assignid]');
+      if(card&&card.dataset.assignid!==a.id) onDragEnter(card.dataset.assignid);
+    };
+    const end=()=>{
+      ghost.remove();
+      onDragEnd();
+      document.removeEventListener('touchmove',move);
+      document.removeEventListener('touchend',end);
+    };
+    document.addEventListener('touchmove',move,{passive:false});
+    document.addEventListener('touchend',end);
+  };
+
+  return <>
+    {showInsertLine&&<div style={{height:3,borderRadius:2,background:'var(--am)',
+      margin:'2px 6px',flexShrink:0}}/>}
+    <div
+      data-assignid={a.id}
+      draggable={!a.packed}
+      onDragStart={a.packed?undefined:e=>{
+        e.dataTransfer.effectAllowed='move';
+        onDragStart(a.id);
+      }}
+      onDragEnter={a.packed?undefined:e=>{e.preventDefault();onDragEnter(a.id);}}
+      onDragOver={e=>e.preventDefault()}
+      onDragEnd={a.packed?undefined:onDragEnd}
+      style={{background:a.packed?`${locColor}0c`:'var(--sf2)',
+        border:`1px solid ${a.packed?locColor+'38':'var(--bd)'}`,
+        borderRadius:8,padding:'9px 11px',display:'flex',alignItems:'center',gap:8,
+        transition:'border-color .15s',opacity:a.packed?.58:1,marginBottom:6}}>
+      {!a.packed&&<span
+        onTouchStart={onHandleTouchStart}
+        style={{color:'var(--tx3)',fontSize:16,flexShrink:0,
+          lineHeight:1,padding:'4px 4px',userSelect:'none',
+          touchAction:'none',cursor:'grab'}}>
+        ⠿
+      </span>}
+      <PackBox packed={a.packed} onChange={onToggle}/>
+      <span onClick={onOpen} style={{flex:1,fontSize:13,fontWeight:500,cursor:'pointer',
+        textDecoration:a.packed?'line-through':'none',color:'var(--tx)'}}>
+        {item.name}
+      </span>
+      <Qty value={a.quantity} onChange={onQty}/>
+    </div>
+  </>;
 }
 
 /* ── LOCATION COLUMN ─────────────────────────────────────────────── */
@@ -335,6 +441,9 @@ function LocCol({loc,items,assignments,onAdd,onToggle,onQty,onOpen,onRename,onSe
   const [menu,setMenu]=useState(false);
   const [dragId,setDragId]=useState(null);
   const [overId,setOverId]=useState(null);
+  // Refs so handleDragEnd always reads current values, not stale closure
+  const dragIdRef=useRef(null);
+  const overIdRef=useRef(null);
   const mRef=useRef();
   const{ask:confirm,el:confirmEl}=useConfirm();
   useEffect(()=>{
@@ -355,14 +464,18 @@ function LocCol({loc,items,assignments,onAdd,onToggle,onQty,onOpen,onRename,onSe
   const contentsW = la.reduce((s,a)=>{ const item=items.find(i=>i.id===a.itemId); return s+(item?.weight??200)*a.quantity; },0);
   const totalW = bagW + contentsW;
 
+  const startDrag=id=>{setDragId(id);dragIdRef.current=id;};
+  const enterDrag=id=>{setOverId(id);overIdRef.current=id;};
   const handleDragEnd=()=>{
-    if(dragId&&overId&&dragId!==overId){
-      onReorder(loc.id,dragId,overId);
-    }
+    const from=dragIdRef.current;
+    const to=overIdRef.current;
+    if(from&&to&&from!==to) onReorder(loc.id,from,to);
     setDragId(null);setOverId(null);
+    dragIdRef.current=null;overIdRef.current=null;
   };
 
-  return <div className="loc-col" style={{borderTop:`3px solid ${loc.color}`}}>
+  return <div className="loc-col" style={{borderTop:`3px solid ${loc.color}`}}
+    onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget)){setOverId(null);overIdRef.current=null;}}}>
     {confirmEl}
     <div style={{padding:'12px 12px 10px',flexShrink:0}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
@@ -400,7 +513,7 @@ function LocCol({loc,items,assignments,onAdd,onToggle,onQty,onOpen,onRename,onSe
     </div>
 
     <div onClick={e=>e.target===e.currentTarget&&onAdd()}
-      style={{flex:1,overflowY:'auto',padding:'0 8px',display:'flex',flexDirection:'column',gap:6,cursor:'default'}}>
+      style={{flex:1,overflowY:'auto',padding:'6px 8px 0',display:'flex',flexDirection:'column',cursor:'default'}}>
       {sorted.length===0
         ?<div onClick={onAdd} style={{textAlign:'center',color:'var(--tx3)',fontSize:12,
             padding:'28px 0',cursor:'pointer'}}>
@@ -414,12 +527,20 @@ function LocCol({loc,items,assignments,onAdd,onToggle,onQty,onOpen,onRename,onSe
           onToggle={()=>onToggle(a.itemId,loc.id)}
           onQty={q=>onQty(a.itemId,loc.id,q)}
           onOpen={()=>onOpen(a.itemId)}
-          onDragStart={id=>setDragId(id)}
-          onDragEnter={id=>setOverId(id)}
+          onDragStart={id=>startDrag(id)}
+          onDragEnter={id=>enterDrag(id)}
           onDragEnd={handleDragEnd}
-          isDragOver={overId===a.id&&dragId!==a.id}/>:null;
+          showInsertLine={overId===a.id&&dragId!==a.id&&overId!=='__bottom__'}/>:null;
       })}
-      <div style={{height:8}}/>
+      {/* Bottom drop zone — allows dropping after the last item */}
+      <div
+        data-assignid="__bottom__"
+        onDragEnter={e=>{e.preventDefault();enterDrag('__bottom__');}}
+        onDragOver={e=>e.preventDefault()}
+        style={{flex:1,minHeight:24,position:'relative'}}>
+        {overId==='__bottom__'&&dragId&&<div style={{height:3,borderRadius:2,
+          background:'var(--am)',margin:'0 4px'}}/>}
+      </div>
     </div>
 
     <div style={{padding:8,borderTop:'1px solid var(--bd)',flexShrink:0}}>
@@ -571,19 +692,66 @@ function ItemDrawer({item,locations,assignments,onClose,onQty,onToggle,onRename,
 }
 
 /* ── ITEM PICKER ─────────────────────────────────────────────────── */
+/* ── CATEGORY FILTER ─────────────────────────────────────────────── */
+function CategoryFilter({categories,selected,onSelect}){
+  return <div style={{display:'flex',gap:5,overflowX:'auto',paddingBottom:4,marginBottom:10,
+    scrollbarWidth:'none',msOverflowStyle:'none'}}>
+    {['All',...categories].map(cat=>(
+      <button key={cat} onClick={()=>onSelect(cat==='All'?null:cat)}
+        style={{padding:'4px 11px',borderRadius:20,fontSize:11,fontWeight:600,
+          flexShrink:0,border:'none',transition:'all .12s',
+          background:selected===(cat==='All'?null:cat)?'var(--am)':'var(--sf2)',
+          color:selected===(cat==='All'?null:cat)?'#1a0e00':'var(--tx2)'}}>
+        {cat}
+      </button>
+    ))}
+  </div>;
+}
+
 function Picker({items,assignments,locId,loc,onClose,onSelect,onCreateAdd}){
   const [q,setQ]=useState('');
+  const [cat,setCat]=useState(null);
   const [name,setName]=useState('');
   const [tab,setTab]=useState('pick');
   const qRef=useRef();
-  useEffect(()=>{qRef.current?.focus();},[]);
+  useEffect(()=>{ qRef.current?.focus(); },[]);
 
-  const taken=new Set(assignments.filter(a=>a.locationId===locId).map(a=>a.itemId));
-  const filtered=items.filter(i=>!taken.has(i.id)&&i.name.toLowerCase().includes(q.toLowerCase()));
+  // Names already assigned to this column
+  const takenInCol=new Set(
+    assignments.filter(a=>a.locationId===locId).map(a=>{
+      const item=items.find(i=>i.id===a.itemId);
+      return item?.name.toLowerCase();
+    }).filter(Boolean)
+  );
+
+  // Merge trip items + ITEM_TPLS master list, deduplicated by name
+  const tripItemNames=new Set(items.map(i=>i.name.toLowerCase()));
+  const masterExtras=ITEM_TPLS
+    .filter(([n])=>!tripItemNames.has(n.toLowerCase()))
+    .map(([n,c,w])=>({id:'__tpl__'+n,name:n,category:c,weight:w,_fromMaster:true}));
+  const allItems=[...items,...masterExtras];
+
+  // All available categories (from unfiltered pool)
+  const available=allItems.filter(i=>!takenInCol.has(i.name.toLowerCase()));
+  const categories=[...new Set(available.map(i=>i.category))].sort();
+
+  // Apply search + category filter together
+  const filtered=available.filter(i=>
+    (!cat||i.category===cat)&&
+    i.name.toLowerCase().includes(q.toLowerCase())
+  );
   const grouped=filtered.reduce((acc,i)=>{(acc[i.category]=acc[i.category]||[]).push(i);return acc;},{});
 
+  const handleSelect=item=>{
+    if(item._fromMaster){
+      onCreateAdd(item.name, item.category, item.weight);
+    } else {
+      onSelect(item.id);
+    }
+  };
+
   return <Modal title={`Add to ${loc.name}`} onClose={onClose} w={440}>
-    <div style={{display:'flex',gap:6,marginBottom:16}}>
+    <div style={{display:'flex',gap:6,marginBottom:14}}>
       {[['pick','Pick Item'],['new','New Item']].map(([v,l])=>(
         <button key={v} onClick={()=>setTab(v)} style={{padding:'5px 16px',borderRadius:20,
           fontSize:12,fontWeight:600,border:'none',
@@ -596,18 +764,19 @@ function Picker({items,assignments,locId,loc,onClose,onSelect,onCreateAdd}){
     {tab==='pick'&&<>
       <input ref={qRef} value={q} onChange={e=>setQ(e.target.value)} placeholder="Search items…"
         style={{width:'100%',background:'var(--sf2)',border:'1px solid var(--bd)',
-          borderRadius:7,padding:'8px 12px',color:'var(--tx)',outline:'none',marginBottom:12}}/>
-      <div style={{maxHeight:340,overflowY:'auto',margin:'0 -24px',padding:'0 24px'}}>
+          borderRadius:7,padding:'8px 12px',color:'var(--tx)',outline:'none',marginBottom:8}}/>
+      <CategoryFilter categories={categories} selected={cat} onSelect={c=>{setCat(c);}}/>
+      <div style={{maxHeight:310,overflowY:'auto',margin:'0 -24px',padding:'0 24px'}}>
         {Object.entries(grouped).length===0
           ?<div style={{textAlign:'center',color:'var(--tx3)',padding:'24px 0',fontSize:13}}>
-            {q?'No matches':'All items already added here'}
+            {q||cat?'No matches — try clearing the filter':'All items already added to this location'}
           </div>
-          :Object.entries(grouped).map(([cat,catItems])=>(
-            <div key={cat} style={{marginBottom:12}}>
-              <div style={{fontSize:10,color:'var(--tx3)',textTransform:'uppercase',
-                letterSpacing:1,fontWeight:600,marginBottom:4}}>{cat}</div>
+          :Object.entries(grouped).map(([c,catItems])=>(
+            <div key={c} style={{marginBottom:12}}>
+              {!cat&&<div style={{fontSize:10,color:'var(--tx3)',textTransform:'uppercase',
+                letterSpacing:1,fontWeight:600,marginBottom:4}}>{c}</div>}
               {catItems.map(item=>(
-                <button key={item.id} onClick={()=>onSelect(item.id)}
+                <button key={item.id} onClick={()=>handleSelect(item)}
                   style={{display:'flex',alignItems:'center',width:'100%',
                     padding:'8px 10px',borderRadius:6,textAlign:'left',
                     fontSize:13,color:'var(--tx)',marginBottom:2,background:'transparent',transition:'background .1s'}}
@@ -1201,6 +1370,7 @@ function TripHeader({trip,onHome,onRename,onSignOut,user,onUpdateUser,onSaveTemp
 /* ── TEMPLATE ITEM PICKER ────────────────────────────────────────── */
 function TemplateItemPicker({locName,takenNames,onClose,onAdd}){
   const [q,setQ]=useState('');
+  const [cat,setCat]=useState(null);
   const [tab,setTab]=useState('pick');
   const [customName,setCustomName]=useState('');
   const [lastAdded,setLastAdded]=useState('');
@@ -1209,9 +1379,13 @@ function TemplateItemPicker({locName,takenNames,onClose,onAdd}){
   useEffect(()=>{qRef.current?.focus();},[]);
   useEffect(()=>{if(tab==='custom')cRef.current?.focus();},[tab]);
 
-  const filtered=ITEM_TPLS.filter(([name])=>
-    !takenNames.has(name.toLowerCase())&&
-    name.toLowerCase().includes(q.toLowerCase())
+  // Full available pool
+  const available=ITEM_TPLS.filter(([name])=>!takenNames.has(name.toLowerCase()));
+  const categories=[...new Set(available.map(([,cat])=>cat))].sort();
+
+  // Apply search + category together
+  const filtered=available.filter(([name,c])=>
+    (!cat||c===cat)&&name.toLowerCase().includes(q.toLowerCase())
   );
   const grouped=filtered.reduce((acc,[name,cat,weight])=>{
     (acc[cat]=acc[cat]||[]).push({name,cat,weight});return acc;
@@ -1248,18 +1422,19 @@ function TemplateItemPicker({locName,takenNames,onClose,onAdd}){
     {tab==='pick'&&<>
       <input ref={qRef} value={q} onChange={e=>setQ(e.target.value)} placeholder="Search items…"
         style={{width:'100%',background:'var(--sf2)',border:'1px solid var(--bd)',
-          borderRadius:7,padding:'8px 12px',color:'var(--tx)',outline:'none',marginBottom:10}}/>
-      <div style={{maxHeight:320,overflowY:'auto',margin:'0 -24px',padding:'0 24px'}}>
+          borderRadius:7,padding:'8px 12px',color:'var(--tx)',outline:'none',marginBottom:8}}/>
+      <CategoryFilter categories={categories} selected={cat} onSelect={setCat}/>
+      <div style={{maxHeight:300,overflowY:'auto',margin:'0 -24px',padding:'0 24px'}}>
         {Object.entries(grouped).length===0
           ?<div style={{textAlign:'center',color:'var(--tx3)',padding:'24px 0',fontSize:13}}>
-            {q?'No matches':'All items from this list already added here'}
+            {q||cat?'No matches — try clearing the filter':'All items already added here'}
           </div>
-          :Object.entries(grouped).map(([cat,items])=>(
-            <div key={cat} style={{marginBottom:14}}>
-              <div style={{fontSize:10,color:'var(--tx3)',textTransform:'uppercase',
-                letterSpacing:1,fontWeight:600,marginBottom:4}}>{cat}</div>
-              {items.map(({name,cat,weight})=>(
-                <button key={name} onClick={()=>pick(name,cat,weight)}
+          :Object.entries(grouped).map(([c,items])=>(
+            <div key={c} style={{marginBottom:14}}>
+              {!cat&&<div style={{fontSize:10,color:'var(--tx3)',textTransform:'uppercase',
+                letterSpacing:1,fontWeight:600,marginBottom:4}}>{c}</div>}
+              {items.map(({name,cat:ic,weight})=>(
+                <button key={name} onClick={()=>pick(name,ic,weight)}
                   style={{display:'flex',alignItems:'center',width:'100%',
                     padding:'8px 10px',borderRadius:6,textAlign:'left',
                     fontSize:13,color:'var(--tx)',marginBottom:2,
@@ -1511,7 +1686,8 @@ function TemplateCard({tpl,trips,onRename,onRemoveItem,onUpdateQty,onAddItem,onD
       <Veil onClick={()=>setPickingTrip(false)}/>
       <div style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',
         width:360,maxWidth:'94vw',background:'var(--sf)',border:'1px solid var(--bd)',
-        borderRadius:12,padding:24,zIndex:201,boxShadow:'0 24px 64px rgba(0,0,0,.65)'}}>
+        borderRadius:12,padding:24,zIndex:201,boxShadow:'0 24px 64px rgba(0,0,0,.65)',
+        animation:'fdModal .2s ease'}}>
         <div className="bb" style={{fontSize:20,color:'var(--am)',marginBottom:16}}>Apply to which trip?</div>
 
         {/* Create new trip option */}
@@ -2049,10 +2225,21 @@ function App(){
   const reorderAssignment=(locationId,fromId,toId)=>mut(t=>{
     const all=[...t.assignments];
     const fi=all.findIndex(a=>a.id===fromId);
+    if(fi===-1)return t;
+    // __bottom__: move dragged item to after the last unpacked item in this location
+    if(toId==='__bottom__'){
+      const[moved]=all.splice(fi,1);
+      // Find last unpacked item in this location
+      const lastUnpackedIdx=all.reduce((last,a,i)=>
+        a.locationId===locationId&&!a.packed?i:last,-1);
+      all.splice(lastUnpackedIdx+1,0,moved);
+      return{...t,assignments:all};
+    }
     const ti=all.findIndex(a=>a.id===toId);
-    if(fi===-1||ti===-1||fi===ti)return t;
+    if(ti===-1||fi===ti)return t;
     const[moved]=all.splice(fi,1);
-    all.splice(ti,0,moved);
+    const insertAt=fi<ti?ti-1:ti;
+    all.splice(insertAt,0,moved);
     return{...t,assignments:all};
   });
 
@@ -2197,10 +2384,10 @@ function App(){
         locId={pickerLoc} loc={pickerLocObj}
         onClose={()=>setPickerLoc(null)}
         onSelect={itemId=>{setAssign(itemId,pickerLoc,1);setPickerLoc(null);setDrawerItem(itemId);}}
-        onCreateAdd={name=>{
+        onCreateAdd={(name,category,weight)=>{
           const nid=genId();
           mut(t=>({...t,
-            items:[...t.items,{id:nid,name,category:'Custom',weight:200}],
+            items:[...t.items,{id:nid,name,category:category||'Custom',weight:weight||200}],
             assignments:[...t.assignments,{id:genId(),itemId:nid,locationId:pickerLoc,quantity:1,packed:false}],
           }));
           setPickerLoc(null);setDrawerItem(nid);
