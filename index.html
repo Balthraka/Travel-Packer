@@ -30,6 +30,55 @@ input,textarea{font-family:inherit;font-size:14px}
 @keyframes slR{from{transform:translateX(380px);opacity:0}to{transform:translateX(0);opacity:1}}
 @keyframes fdU{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fd{from{opacity:0}to{opacity:1}}
+
+/* ── BOARD MOBILE ── */
+.board-container{
+  display:flex;gap:16px;padding:16px;
+  overflow-x:auto;overflow-y:hidden;
+  align-items:stretch;flex:1;
+  -webkit-overflow-scrolling:touch;
+}
+.loc-col{
+  width:274px;flex-shrink:0;background:var(--sf);
+  border:1px solid var(--bd);border-radius:10px;
+  display:flex;flex-direction:column;height:100%;overflow:hidden;
+}
+.drawer-panel{
+  position:fixed;right:0;top:0;bottom:0;width:358px;
+  background:var(--sf);border-left:1px solid var(--bd);
+  z-index:201;display:flex;flex-direction:column;
+  animation:slR .25s ease;
+}
+/* desktop-only header buttons */
+.hdr-desktop{display:flex;align-items:center;gap:8px;}
+.hdr-mobile-menu{display:none;}
+
+@media(max-width:768px){
+  .board-container{
+    padding:10px;gap:10px;
+    scroll-snap-type:x mandatory;
+    scroll-padding:10px;
+  }
+  .loc-col{
+    width:calc(100vw - 32px) !important;
+    min-width:calc(100vw - 32px);
+    scroll-snap-align:start;
+    scroll-snap-stop:always;
+  }
+  .drawer-panel{
+    width:100vw !important;
+    border-left:none !important;
+  }
+  .hdr-desktop{display:none !important;}
+  .hdr-mobile-menu{display:flex !important;align-items:center;gap:8px;}
+  .board-add-loc{
+    min-width:calc(100vw - 32px) !important;
+    scroll-snap-align:start;
+  }
+  .mob-dots{display:flex !important;}
+}
+.mob-dots{display:none;}
+
 @media print{
   .np{display:none!important}
   html,body{overflow:visible!important;height:auto!important;background:white!important}
@@ -213,9 +262,7 @@ function LocCol({loc,items,assignments,onAdd,onToggle,onQty,onOpen,onRename,onSe
   const contentsW = la.reduce((s,a)=>{ const item=items.find(i=>i.id===a.itemId); return s+(item?.weight??200)*a.quantity; },0);
   const totalW = bagW + contentsW;
 
-  return <div style={{width:274,flexShrink:0,background:'var(--sf)',border:'1px solid var(--bd)',
-    borderTop:`3px solid ${loc.color}`,borderRadius:10,
-    display:'flex',flexDirection:'column',height:'100%',overflow:'hidden'}}>
+  return <div className="loc-col" style={{borderTop:`3px solid ${loc.color}`}}>
     
     <div style={{padding:'12px 12px 10px',flexShrink:0}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
@@ -302,9 +349,7 @@ function ItemDrawer({item,locations,assignments,onClose,onQty,onToggle,onRename,
 
   return <>
     <Veil onClick={onClose} alpha={.38}/>
-    <div style={{position:'fixed',right:0,top:0,bottom:0,width:358,
-      background:'var(--sf)',borderLeft:'1px solid var(--bd)',
-      zIndex:201,display:'flex',flexDirection:'column',animation:'slR .25s ease'}}>
+    <div className="drawer-panel">
 
       <div style={{padding:'18px 18px 14px',borderBottom:'1px solid var(--bd)',flexShrink:0}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:14}}>
@@ -816,20 +861,40 @@ function BagWeightModal({loc,onClose,onSave}){
 
 /* ── BOARD ───────────────────────────────────────────────────────── */
 function Board({trip,onAdd,onToggle,onQty,onOpen,onAddLoc,onRenameLoc,onSetBagWeight,onDelLoc}){
-  return <div style={{flex:1,display:'flex',gap:16,padding:20,
-    overflowX:'auto',overflowY:'hidden',alignItems:'stretch'}}>
-    {trip.locations.map(loc=>(
-      <LocCol key={loc.id} loc={loc} items={trip.items} assignments={trip.assignments}
-        onAdd={()=>onAdd(loc.id)} onToggle={onToggle} onQty={onQty} onOpen={onOpen}
-        onRename={()=>onRenameLoc(loc.id)}
-        onSetBagWeight={()=>onSetBagWeight(loc.id)}
-        onDel={()=>onDelLoc(loc.id)}/>
-    ))}
-    <button onClick={onAddLoc} style={{width:240,flexShrink:0,alignSelf:'flex-start',
-      border:'1px dashed var(--bd)',borderRadius:10,padding:20,color:'var(--tx3)',
-      fontSize:13,display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginTop:3}}>
-      <span style={{fontSize:20}}>+</span> Add Location
-    </button>
+  const [activeIdx,setActiveIdx]=useState(0);
+  const scrollRef=useRef();
+
+  const onScroll=()=>{
+    const el=scrollRef.current;
+    if(!el)return;
+    const colW=el.scrollWidth/( trip.locations.length+1);
+    setActiveIdx(Math.round(el.scrollLeft/colW));
+  };
+
+  return <div style={{flex:1,display:'flex',flexDirection:'column',minHeight:0}}>
+    <div ref={scrollRef} className="board-container" onScroll={onScroll}>
+      {trip.locations.map(loc=>(
+        <LocCol key={loc.id} loc={loc} items={trip.items} assignments={trip.assignments}
+          onAdd={()=>onAdd(loc.id)} onToggle={onToggle} onQty={onQty} onOpen={onOpen}
+          onRename={()=>onRenameLoc(loc.id)}
+          onSetBagWeight={()=>onSetBagWeight(loc.id)}
+          onDel={()=>onDelLoc(loc.id)}/>
+      ))}
+      <button onClick={onAddLoc} className="board-add-loc"
+        style={{width:200,flexShrink:0,alignSelf:'flex-start',
+          border:'1px dashed var(--bd)',borderRadius:10,padding:20,color:'var(--tx3)',
+          fontSize:13,display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+        <span style={{fontSize:20}}>+</span> Add Location
+      </button>
+    </div>
+    {/* Scroll dots — mobile only */}
+    {trip.locations.length>1&&<div style={{display:'flex',justifyContent:'center',gap:6,
+      padding:'8px 0 4px',flexShrink:0}} className="mob-dots">
+      {trip.locations.map((loc,i)=>(
+        <div key={loc.id} style={{width:i===activeIdx?20:6,height:6,borderRadius:3,
+          transition:'all .2s',background:i===activeIdx?loc.color:'var(--sf3)'}}/>
+      ))}
+    </div>}
   </div>;
 }
 
@@ -874,47 +939,58 @@ function DisplayName({user,onUpdate}){
 }
 
 /* ── TRIP HEADER ─────────────────────────────────────────────────── */
-function TripHeader({trip,onHome,onRename,onExport,onImport,onSignOut,user,onUpdateUser,onSaveTemplate,onApplyTemplate,view,onView}){
+function TripHeader({trip,onHome,onRename,onSignOut,user,onUpdateUser,onSaveTemplate,onApplyTemplate,view,onView}){
   const [editing,setEditing]=useState(false);
   const [val,setVal]=useState('');
+  const [mobileMenu,setMobileMenu]=useState(false);
   const fRef=useRef();
   const iRef=useRef();
+  const mRef=useRef();
 
   const startEdit=()=>{setVal(trip.name);setEditing(true);};
   const save=()=>{if(val.trim()&&val.trim()!==trip.name)onRename(val.trim());setEditing(false);};
   useEffect(()=>{if(editing)iRef.current?.focus();},[editing]);
+  useEffect(()=>{
+    if(!mobileMenu)return;
+    const fn=e=>{if(!mRef.current?.contains(e.target))setMobileMenu(false);};
+    document.addEventListener('mousedown',fn);
+    return()=>document.removeEventListener('mousedown',fn);
+  },[mobileMenu]);
 
-  return <div className="np" style={{display:'flex',alignItems:'center',gap:10,
-    padding:'0 16px',height:54,background:'var(--sf)',
+  const tripNameEl = editing
+    ?<input ref={iRef} value={val} onChange={e=>setVal(e.target.value)}
+        onKeyDown={e=>{if(e.key==='Enter')save();if(e.key==='Escape')setEditing(false);}}
+        onBlur={save}
+        style={{fontSize:14,fontWeight:600,background:'var(--sf2)',border:'1px solid var(--am)',
+          borderRadius:6,padding:'3px 8px',color:'var(--tx)',outline:'none',maxWidth:200,minWidth:80}}/>
+    :<button onClick={startEdit} title="Click to rename"
+        style={{fontSize:14,fontWeight:600,color:'var(--tx2)',maxWidth:200,padding:'3px 7px',
+          borderRadius:5,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
+          transition:'background .12s',textAlign:'left'}}
+        onMouseEnter={e=>e.currentTarget.style.background='var(--sf2)'}
+        onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+        {trip.name} <span style={{fontSize:11,color:'var(--tx3)',marginLeft:2}}>✎</span>
+      </button>;
+
+  return <div className="np" style={{display:'flex',alignItems:'center',gap:8,
+    padding:'0 12px',height:54,background:'var(--sf)',
     borderBottom:'1px solid var(--bd)',flexShrink:0}}>
+
+    {/* Logo */}
     <button onClick={onHome} className="bb"
-      style={{fontSize:24,color:'var(--am)',letterSpacing:3,padding:0,transition:'opacity .15s',flexShrink:0}}
+      style={{fontSize:22,color:'var(--am)',letterSpacing:3,padding:0,flexShrink:0,transition:'opacity .15s'}}
       onMouseEnter={e=>e.currentTarget.style.opacity='.65'}
       onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
       PACKR
     </button>
-    <span style={{color:'var(--bd)',fontSize:18,userSelect:'none',flexShrink:0}}>/</span>
+    <span style={{color:'var(--bd)',fontSize:16,userSelect:'none',flexShrink:0}}>/</span>
+    {tripNameEl}
 
-    {editing
-      ?<input ref={iRef} value={val} onChange={e=>setVal(e.target.value)}
-          onKeyDown={e=>{if(e.key==='Enter')save();if(e.key==='Escape')setEditing(false);}}
-          onBlur={save}
-          style={{fontSize:14,fontWeight:600,background:'var(--sf2)',border:'1px solid var(--am)',
-            borderRadius:6,padding:'3px 8px',color:'var(--tx)',outline:'none',maxWidth:200,minWidth:80}}/>
-      :<button onClick={startEdit} title="Click to rename"
-          style={{fontSize:14,fontWeight:600,color:'var(--tx2)',maxWidth:200,padding:'3px 7px',
-            borderRadius:5,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
-            transition:'background .12s',textAlign:'left'}}
-          onMouseEnter={e=>e.currentTarget.style.background='var(--sf2)'}
-          onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-          {trip.name} <span style={{fontSize:11,color:'var(--tx3)',marginLeft:2}}>✎</span>
-        </button>
-    }
-
+    {/* View toggle */}
     <div style={{display:'flex',background:'var(--sf2)',borderRadius:7,
-      border:'1px solid var(--bd)',padding:2,marginLeft:4,flexShrink:0}}>
+      border:'1px solid var(--bd)',padding:2,flexShrink:0}}>
       {[['board','Board'],['summary','Summary']].map(([v,l])=>(
-        <button key={v} onClick={()=>onView(v)} style={{padding:'4px 12px',borderRadius:5,
+        <button key={v} onClick={()=>onView(v)} style={{padding:'4px 10px',borderRadius:5,
           fontSize:12,fontWeight:600,
           background:view===v?'var(--sf3)':'transparent',
           color:view===v?'var(--tx)':'var(--tx2)'}}>
@@ -925,176 +1001,304 @@ function TripHeader({trip,onHome,onRename,onExport,onImport,onSignOut,user,onUpd
 
     <div style={{flex:1}}/>
 
-    <button onClick={onApplyTemplate} style={{padding:'5px 10px',borderRadius:6,fontSize:12,
-      background:'var(--sf2)',border:'1px solid var(--bd)',color:'var(--tx2)',flexShrink:0}}>
-      ⚡ Apply Template
-    </button>
-    <button onClick={onSaveTemplate} style={{padding:'5px 10px',borderRadius:6,fontSize:12,
-      background:'var(--sf2)',border:'1px solid var(--bd)',color:'var(--am)',flexShrink:0}}>
-      + Save Template
-    </button>
-    <button onClick={onExport} style={{padding:'5px 10px',borderRadius:6,fontSize:12,
-      background:'var(--sf2)',border:'1px solid var(--bd)',color:'var(--tx2)',flexShrink:0}}>↓ Export</button>
-    <input ref={fRef} type="file" accept=".json" style={{display:'none'}}
-      onChange={e=>{
-        const f=e.target.files[0];if(!f)return;
-        const r=new FileReader();r.onload=ev=>{onImport(ev.target.result);e.target.value='';};r.readAsText(f);
-      }}/>
-    <button onClick={()=>fRef.current?.click()} style={{padding:'5px 10px',borderRadius:6,fontSize:12,
-      background:'var(--sf2)',border:'1px solid var(--bd)',color:'var(--tx2)',flexShrink:0}}>↑ Import</button>
-    <div style={{width:1,height:20,background:'var(--bd)',flexShrink:0}}/>
-    <DisplayName user={user} onUpdate={onUpdateUser}/>
-    <button onClick={onSignOut} style={{fontSize:12,color:'var(--tx3)',padding:'5px 10px',
-      borderRadius:6,border:'1px solid var(--bd)',background:'var(--sf2)',flexShrink:0}}>Sign out</button>
+    {/* Desktop buttons */}
+    <div className="hdr-desktop">
+      <button onClick={onApplyTemplate} style={{padding:'5px 10px',borderRadius:6,fontSize:12,
+        background:'var(--sf2)',border:'1px solid var(--bd)',color:'var(--tx2)'}}>⚡ Apply Template</button>
+      <button onClick={onSaveTemplate} style={{padding:'5px 10px',borderRadius:6,fontSize:12,
+        background:'var(--sf2)',border:'1px solid var(--bd)',color:'var(--am)'}}>+ Save Template</button>
+      <div style={{width:1,height:20,background:'var(--bd)'}}/>
+      <DisplayName user={user} onUpdate={onUpdateUser}/>
+      <button onClick={onSignOut} style={{fontSize:12,color:'var(--tx3)',padding:'5px 10px',
+        borderRadius:6,border:'1px solid var(--bd)',background:'var(--sf2)',flexShrink:0}}>Sign out</button>
+    </div>
+
+    {/* Mobile overflow menu */}
+    <div className="hdr-mobile-menu" ref={mRef} style={{position:'relative'}}>
+      <button onClick={()=>setMobileMenu(m=>!m)}
+        style={{width:36,height:36,borderRadius:8,background:mobileMenu?'var(--sf3)':'var(--sf2)',
+          border:'1px solid var(--bd)',fontSize:18,display:'flex',alignItems:'center',justifyContent:'center'}}>
+        ⋯
+      </button>
+      {mobileMenu&&<div style={{position:'absolute',right:0,top:'calc(100% + 6px)',
+        background:'var(--sf)',border:'1px solid var(--bd)',borderRadius:10,
+        zIndex:300,width:210,boxShadow:'0 12px 32px rgba(0,0,0,.7)',overflow:'hidden'}}>
+        <div style={{padding:'10px 14px 6px',fontSize:10,color:'var(--tx3)',
+          textTransform:'uppercase',letterSpacing:1}}>
+          <DisplayName user={user} onUpdate={u=>{onUpdateUser(u);setMobileMenu(false);}}/>
+        </div>
+        <div style={{height:1,background:'var(--bd)',margin:'6px 0'}}/>
+        {[
+          ['⚡ Apply Template', onApplyTemplate, 'var(--tx)'],
+          ['+ Save Template',   onSaveTemplate,  'var(--am)'],
+        ].map(([l,fn,c])=>(
+          <button key={l} onClick={()=>{fn();setMobileMenu(false);}}
+            style={{display:'block',width:'100%',padding:'11px 14px',fontSize:13,
+              color:c,textAlign:'left'}}>
+            {l}
+          </button>
+        ))}
+        <div style={{height:1,background:'var(--bd)'}}/>
+        <div style={{height:1,background:'var(--bd)'}}/>
+        <button onClick={()=>{onSignOut();setMobileMenu(false);}}
+          style={{display:'block',width:'100%',padding:'11px 14px',fontSize:13,
+            color:'var(--rd)',textAlign:'left'}}>
+          Sign out
+        </button>
+      </div>}
+    </div>
   </div>;
 }
 
 /* ── HOME SCREEN ─────────────────────────────────────────────────── */
-function HomeScreen({trips,templates,onCreate,onSelect,onDelete,onRename,onImport,onDeleteTemplate,onApplyTemplate}){
+function TemplateCard({tpl,trips,onRename,onRemoveItem,onDelete,onApplyToTrip}){
+  const [expanded,setExpanded]=useState(false);
+  const [renaming,setRenaming]=useState(false);
+  const [val,setVal]=useState('');
+  const [pickingTrip,setPickingTrip]=useState(false);
+  const iRef=useRef();
+  const fmt=ts=>new Date(ts).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
+
+  const startRename=e=>{e.stopPropagation();setVal(tpl.name);setRenaming(true);};
+  const saveRename=()=>{if(val.trim())onRename(val.trim());setRenaming(false);};
+  useEffect(()=>{if(renaming)iRef.current?.focus();},[renaming]);
+
+  // Group assignments by location
+  const byLoc=tpl.assignments.reduce((acc,a,i)=>{
+    const k=a.locationName;
+    (acc[k]=acc[k]||[]).push({...a,_idx:i});
+    return acc;
+  },{});
+
+  const handleApply=e=>{
+    e.stopPropagation();
+    if(trips.length===0){alert('Create a trip first.');return;}
+    if(trips.length===1){onApplyToTrip(trips[0].id);return;}
+    setPickingTrip(true);
+  };
+
+  return <>
+    <div style={{background:'var(--sf)',border:'1px solid var(--bd)',borderRadius:10,overflow:'hidden',
+      transition:'border-color .15s'}}
+      onMouseEnter={e=>e.currentTarget.style.borderColor='var(--sf3)'}
+      onMouseLeave={e=>e.currentTarget.style.borderColor='var(--bd)'}>
+
+      {/* Header row */}
+      <div style={{padding:'14px 16px',display:'flex',alignItems:'center',gap:12,cursor:'pointer'}}
+        onClick={()=>setExpanded(x=>!x)}>
+        <div style={{flex:1,minWidth:0}}>
+          {renaming
+            ?<div style={{display:'flex',gap:8}} onClick={e=>e.stopPropagation()}>
+                <input ref={iRef} value={val} onChange={e=>setVal(e.target.value)}
+                  onKeyDown={e=>{if(e.key==='Enter')saveRename();if(e.key==='Escape')setRenaming(false);}}
+                  onBlur={saveRename}
+                  style={{flex:1,background:'var(--sf2)',border:'1px solid var(--am)',borderRadius:6,
+                    padding:'4px 9px',color:'var(--tx)',outline:'none',fontSize:14,fontWeight:700}}/>
+              </div>
+            :<div style={{display:'flex',alignItems:'center',gap:8}}>
+                <div style={{fontWeight:700,fontSize:15,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                  {tpl.name}
+                </div>
+                <button onClick={startRename}
+                  style={{fontSize:12,color:'var(--tx3)',padding:'2px 5px',borderRadius:4,flexShrink:0}}
+                  onMouseEnter={e=>e.currentTarget.style.color='var(--am)'}
+                  onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✎</button>
+              </div>
+          }
+          <div style={{fontSize:11,color:'var(--tx3)',marginTop:3}}>
+            {tpl.assignments.length} item{tpl.assignments.length!==1?'s':''} across {Object.keys(byLoc).length} location{Object.keys(byLoc).length!==1?'s':''} · {fmt(tpl.createdAt)}
+          </div>
+        </div>
+        <button onClick={handleApply}
+          style={{padding:'6px 14px',borderRadius:7,fontSize:12,fontWeight:700,flexShrink:0,
+            background:'var(--am)',color:'#1a0e00',border:'none'}}>
+          Apply
+        </button>
+        <button onClick={e=>{e.stopPropagation();if(window.confirm(`Delete template "${tpl.name}"?`))onDelete();}}
+          style={{color:'var(--tx3)',fontSize:15,padding:'4px 8px',borderRadius:5,flexShrink:0}}
+          onMouseEnter={e=>e.currentTarget.style.color='var(--rd)'}
+          onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✕</button>
+        <span style={{color:'var(--tx3)',fontSize:12,flexShrink:0}}>{expanded?'▲':'▼'}</span>
+      </div>
+
+      {/* Expanded view */}
+      {expanded&&<div style={{borderTop:'1px solid var(--bd)',padding:'12px 16px',
+        display:'flex',flexDirection:'column',gap:12}}>
+        {Object.entries(byLoc).map(([locName,items])=>(
+          <div key={locName}>
+            <div style={{fontSize:10,color:'var(--tx3)',textTransform:'uppercase',
+              letterSpacing:1,fontWeight:600,marginBottom:6}}>{locName}</div>
+            <div style={{display:'flex',flexDirection:'column',gap:4}}>
+              {items.map(a=>(
+                <div key={a._idx} style={{display:'flex',alignItems:'center',gap:8,
+                  padding:'6px 10px',background:'var(--sf2)',borderRadius:7}}>
+                  <span style={{flex:1,fontSize:13}}>{a.itemName}</span>
+                  <span style={{fontSize:12,color:'var(--tx2)',fontWeight:600}}>×{a.quantity}</span>
+                  <button onClick={()=>onRemoveItem(a._idx)}
+                    style={{color:'var(--tx3)',fontSize:13,padding:'2px 6px',borderRadius:4}}
+                    onMouseEnter={e=>e.currentTarget.style.color='var(--rd)'}
+                    onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✕</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+        {tpl.assignments.length===0&&<div style={{fontSize:13,color:'var(--tx3)',textAlign:'center',
+          padding:'12px 0'}}>No items left — delete this template.</div>}
+      </div>}
+    </div>
+
+    {/* Trip picker when applying from home */}
+    {pickingTrip&&<>
+      <Veil onClick={()=>setPickingTrip(false)}/>
+      <div style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',
+        width:340,maxWidth:'94vw',background:'var(--sf)',border:'1px solid var(--bd)',
+        borderRadius:12,padding:24,zIndex:201,boxShadow:'0 24px 64px rgba(0,0,0,.65)'}}>
+        <div className="bb" style={{fontSize:20,color:'var(--am)',marginBottom:16}}>Apply to which trip?</div>
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          {trips.slice().sort((a,b)=>b.createdAt-a.createdAt).map(t=>(
+            <button key={t.id} onClick={()=>{onApplyToTrip(t.id);setPickingTrip(false);}}
+              style={{padding:'10px 14px',borderRadius:8,background:'var(--sf2)',
+                border:'1px solid var(--bd)',fontSize:14,fontWeight:600,textAlign:'left',
+                color:'var(--tx)',transition:'border-color .12s'}}
+              onMouseEnter={e=>e.currentTarget.style.borderColor='var(--am)'}
+              onMouseLeave={e=>e.currentTarget.style.borderColor='var(--bd)'}>
+              {t.name}
+            </button>
+          ))}
+        </div>
+        <button onClick={()=>setPickingTrip(false)}
+          style={{marginTop:14,width:'100%',padding:'8px',borderRadius:7,
+            background:'transparent',border:'1px solid var(--bd)',fontSize:13,color:'var(--tx3)'}}>
+          Cancel
+        </button>
+      </div>
+    </>}
+  </>;
+}
+
+function HomeScreen({trips,templates,onCreate,onSelect,onDelete,onRename,onDeleteTemplate,
+  onRenameTemplate,onRemoveTemplateItem,onApplyTemplateToTrip}){
+  const [tab,setTab]=useState('trips');
   const [name,setName]=useState('');
   const [renamingId,setRenamingId]=useState(null);
   const [renameVal,setRenameVal]=useState('');
-  const fRef=useRef();
   const fmt=ts=>new Date(ts).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
+  const saveRename=id=>{if(renameVal.trim())onRename(id,renameVal.trim());setRenamingId(null);};
 
-  const saveRename=(id)=>{
-    if(renameVal.trim())onRename(id,renameVal.trim());
-    setRenamingId(null);
-  };
-
-  return <div style={{flex:1,overflowY:'auto',padding:'44px 28px'}}>
+  return <div style={{flex:1,overflowY:'auto',padding:'32px 20px'}}>
     <div style={{maxWidth:680,margin:'0 auto'}}>
 
-      <div className="bb" style={{fontSize:76,color:'var(--am)',letterSpacing:6,lineHeight:1,marginBottom:8}}>
+      <div className="bb" style={{fontSize:64,color:'var(--am)',letterSpacing:6,lineHeight:1,marginBottom:6}}>
         PACKR
       </div>
-      <div style={{fontSize:14,color:'var(--tx2)',marginBottom:48,letterSpacing:.3}}>
+      <div style={{fontSize:14,color:'var(--tx2)',marginBottom:28,letterSpacing:.3}}>
         Smart packing for smarter travellers
       </div>
 
-      {/* New trip */}
+      {/* New trip box */}
       <div style={{background:'var(--sf)',border:'1px solid var(--bd)',borderRadius:10,
-        padding:'20px 22px',marginBottom:32}}>
-        <div className="bb" style={{fontSize:17,color:'var(--am)',marginBottom:14}}>New Trip</div>
+        padding:'18px 20px',marginBottom:28}}>
+        <div className="bb" style={{fontSize:16,color:'var(--am)',marginBottom:12}}>New Trip</div>
         <div style={{display:'flex',flexDirection:'column',gap:8}}>
           <input value={name} onChange={e=>setName(e.target.value)}
-            onKeyDown={e=>{ if(e.key==='Enter'&&name.trim()){onCreate(name.trim());setName('');} }}
+            onKeyDown={e=>{if(e.key==='Enter'&&name.trim()){onCreate(name.trim());setName('');}}}
             placeholder="E.g. Tokyo 2025, Bali Conference…"
             style={{width:'100%',background:'var(--sf2)',border:'1px solid var(--bd)',borderRadius:7,
               padding:'10px 14px',color:'var(--tx)',outline:'none',fontSize:14}}/>
           <button onClick={()=>{if(name.trim()){onCreate(name.trim());setName('');}}}
             disabled={!name.trim()} style={{width:'100%',padding:'10px',borderRadius:7,
-              background:'var(--am)',color:'#1a0e00',fontWeight:700,fontSize:14,
-              opacity:name.trim()?1:.45}}>
+              background:'var(--am)',color:'#1a0e00',fontWeight:700,fontSize:14,opacity:name.trim()?1:.45}}>
             Create Trip
           </button>
         </div>
       </div>
 
-      {/* Trip list */}
-      {trips.length>0&&<>
-        <div className="bb" style={{fontSize:17,color:'var(--tx2)',marginBottom:14}}>Your Trips</div>
-        <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:32}}>
-          {trips.slice().sort((a,b)=>b.createdAt-a.createdAt).map(t=>{
-            const tot=t.assignments.reduce((s,a)=>s+a.quantity,0);
-            const pk=t.assignments.filter(a=>a.packed).reduce((s,a)=>s+a.quantity,0);
-            const pct=tot>0?(pk/tot)*100:0;
-            const isRenaming=renamingId===t.id;
-            return <div key={t.id}
-              style={{background:'var(--sf)',border:`1px solid ${isRenaming?'var(--am)':'var(--bd)'}`,borderRadius:10,
-                padding:'15px 18px',display:'flex',alignItems:'center',gap:14,
-                cursor:isRenaming?'default':'pointer',transition:'border-color .15s'}}
-              onClick={()=>!isRenaming&&onSelect(t.id)}
-              onMouseEnter={e=>{if(!isRenaming)e.currentTarget.style.borderColor='var(--am)';}}
-              onMouseLeave={e=>{if(!isRenaming)e.currentTarget.style.borderColor='var(--bd)';}}>
-              <div style={{flex:1,minWidth:0}}>
-                {isRenaming
-                  ?<div style={{display:'flex',gap:8,marginBottom:8}} onClick={e=>e.stopPropagation()}>
-                      <input value={renameVal} onChange={e=>setRenameVal(e.target.value)}
-                        autoFocus
-                        onKeyDown={e=>{if(e.key==='Enter')saveRename(t.id);if(e.key==='Escape')setRenamingId(null);}}
-                        style={{flex:1,background:'var(--sf2)',border:'1px solid var(--am)',borderRadius:6,
-                          padding:'6px 10px',color:'var(--tx)',outline:'none',fontSize:14,fontWeight:600}}/>
-                      <button onClick={()=>saveRename(t.id)}
-                        style={{padding:'6px 12px',borderRadius:6,background:'var(--am)',
-                          color:'#1a0e00',fontWeight:700,fontSize:13}}>✓</button>
-                      <button onClick={()=>setRenamingId(null)}
-                        style={{padding:'6px 10px',borderRadius:6,background:'var(--sf2)',
-                          border:'1px solid var(--bd)',fontSize:13,color:'var(--tx2)'}}>✕</button>
-                    </div>
-                  :<div style={{fontWeight:700,fontSize:15,marginBottom:3,
-                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.name}</div>
-                }
-                <div style={{fontSize:11,color:'var(--tx3)',marginBottom:9}}>
-                  Created {fmt(t.createdAt)} · {t.assignments.length} item type{t.assignments.length!==1?'s':''}
-                </div>
-                <div style={{display:'flex',alignItems:'center',gap:8}}>
-                  <div style={{flex:1,height:4,background:'var(--sf3)',borderRadius:2,overflow:'hidden'}}>
-                    <div style={{height:'100%',borderRadius:2,
-                      width:`${pct}%`,background:pct===100?'var(--gn)':'var(--am)',transition:'width .3s'}}/>
-                  </div>
-                  <span style={{fontSize:11,color:'var(--tx3)',flexShrink:0}}>{pk}/{tot} packed</span>
-                </div>
-              </div>
-              {!isRenaming&&<>
-                <button
-                  onClick={e=>{e.stopPropagation();setRenamingId(t.id);setRenameVal(t.name);}}
-                  title="Rename trip"
-                  style={{color:'var(--tx3)',fontSize:14,padding:'4px 8px',borderRadius:5,
-                    flexShrink:0,transition:'color .15s'}}
-                  onMouseEnter={e=>e.currentTarget.style.color='var(--am)'}
-                  onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✎</button>
-                <button
-                  onClick={e=>{e.stopPropagation();if(window.confirm(`Delete "${t.name}"?`))onDelete(t.id);}}
-                  style={{color:'var(--tx3)',fontSize:16,padding:'4px 8px',borderRadius:5,
-                    flexShrink:0,transition:'color .15s'}}
-                  onMouseEnter={e=>e.currentTarget.style.color='var(--rd)'}
-                  onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✕</button>
-              </>}
-            </div>;
-          })}
-        </div>
-      </>}
+      {/* Tabs */}
+      <div style={{display:'flex',background:'var(--sf2)',borderRadius:8,border:'1px solid var(--bd)',
+        padding:3,marginBottom:20}}>
+        {[['trips',`Trips (${trips.length})`],['templates',`Templates (${(templates||[]).length})`]].map(([v,l])=>(
+          <button key={v} onClick={()=>setTab(v)} style={{flex:1,padding:'8px',borderRadius:6,
+            fontSize:13,fontWeight:600,transition:'all .15s',
+            background:tab===v?'var(--sf3)':'transparent',
+            color:tab===v?'var(--tx)':'var(--tx2)'}}>
+            {l}
+          </button>
+        ))}
+      </div>
 
-      {/* Templates */}
-      {templates&&templates.length>0&&<>
-        <div className="bb" style={{fontSize:17,color:'var(--tx2)',marginBottom:14}}>Your Templates</div>
-        <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:32}}>
-          {templates.slice().sort((a,b)=>b.createdAt-a.createdAt).map(tpl=>(
-            <div key={tpl.id} style={{background:'var(--sf)',border:'1px solid var(--bd)',borderRadius:10,
-              padding:'13px 18px',display:'flex',alignItems:'center',gap:12}}>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontWeight:700,fontSize:14,marginBottom:2}}>{tpl.name}</div>
-                <div style={{fontSize:11,color:'var(--tx3)'}}>
-                  {tpl.assignments.length} item{tpl.assignments.length!==1?'s':''} · Created {fmt(tpl.createdAt)}
-                </div>
+      {/* Trips tab */}
+      {tab==='trips'&&<div style={{display:'flex',flexDirection:'column',gap:10}}>
+        {trips.length===0&&<div style={{textAlign:'center',color:'var(--tx3)',padding:'32px 0',fontSize:14}}>
+          No trips yet — create one above.
+        </div>}
+        {trips.slice().sort((a,b)=>b.createdAt-a.createdAt).map(t=>{
+          const tot=t.assignments.reduce((s,a)=>s+a.quantity,0);
+          const pk=t.assignments.filter(a=>a.packed).reduce((s,a)=>s+a.quantity,0);
+          const pct=tot>0?(pk/tot)*100:0;
+          const isRenaming=renamingId===t.id;
+          return <div key={t.id}
+            style={{background:'var(--sf)',border:`1px solid ${isRenaming?'var(--am)':'var(--bd)'}`,
+              borderRadius:10,padding:'15px 18px',display:'flex',alignItems:'center',gap:14,
+              cursor:isRenaming?'default':'pointer',transition:'border-color .15s'}}
+            onClick={()=>!isRenaming&&onSelect(t.id)}
+            onMouseEnter={e=>{if(!isRenaming)e.currentTarget.style.borderColor='var(--am)';}}
+            onMouseLeave={e=>{if(!isRenaming)e.currentTarget.style.borderColor='var(--bd)';}}>
+            <div style={{flex:1,minWidth:0}}>
+              {isRenaming
+                ?<div style={{display:'flex',gap:8,marginBottom:8}} onClick={e=>e.stopPropagation()}>
+                    <input value={renameVal} onChange={e=>setRenameVal(e.target.value)} autoFocus
+                      onKeyDown={e=>{if(e.key==='Enter')saveRename(t.id);if(e.key==='Escape')setRenamingId(null);}}
+                      style={{flex:1,background:'var(--sf2)',border:'1px solid var(--am)',borderRadius:6,
+                        padding:'6px 10px',color:'var(--tx)',outline:'none',fontSize:14,fontWeight:600}}/>
+                    <button onClick={()=>saveRename(t.id)} style={{padding:'6px 12px',borderRadius:6,
+                      background:'var(--am)',color:'#1a0e00',fontWeight:700,fontSize:13}}>✓</button>
+                    <button onClick={()=>setRenamingId(null)} style={{padding:'6px 10px',borderRadius:6,
+                      background:'var(--sf2)',border:'1px solid var(--bd)',fontSize:13,color:'var(--tx2)'}}>✕</button>
+                  </div>
+                :<div style={{fontWeight:700,fontSize:15,marginBottom:3,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.name}</div>
+              }
+              <div style={{fontSize:11,color:'var(--tx3)',marginBottom:9}}>
+                {fmt(t.createdAt)} · {t.assignments.length} item type{t.assignments.length!==1?'s':''}
               </div>
-              <button onClick={()=>onApplyTemplate(tpl.id)}
-                style={{padding:'5px 12px',borderRadius:6,fontSize:12,fontWeight:600,
-                  background:'var(--am-bg)',border:'1px solid var(--am)',color:'var(--am)',flexShrink:0}}>
-                Apply
-              </button>
-              <button onClick={()=>{if(window.confirm(`Delete template "${tpl.name}"?`))onDeleteTemplate(tpl.id);}}
-                style={{color:'var(--tx3)',fontSize:15,padding:'4px 8px',borderRadius:5,flexShrink:0}}
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <div style={{flex:1,height:4,background:'var(--sf3)',borderRadius:2,overflow:'hidden'}}>
+                  <div style={{height:'100%',borderRadius:2,width:`${pct}%`,
+                    background:pct===100?'var(--gn)':'var(--am)',transition:'width .3s'}}/>
+                </div>
+                <span style={{fontSize:11,color:'var(--tx3)',flexShrink:0}}>{pk}/{tot} packed</span>
+              </div>
+            </div>
+            {!isRenaming&&<>
+              <button onClick={e=>{e.stopPropagation();setRenamingId(t.id);setRenameVal(t.name);}}
+                style={{color:'var(--tx3)',fontSize:14,padding:'4px 8px',borderRadius:5,flexShrink:0}}
+                onMouseEnter={e=>e.currentTarget.style.color='var(--am)'}
+                onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✎</button>
+              <button onClick={e=>{e.stopPropagation();if(window.confirm(`Delete "${t.name}"?`))onDelete(t.id);}}
+                style={{color:'var(--tx3)',fontSize:16,padding:'4px 8px',borderRadius:5,flexShrink:0}}
                 onMouseEnter={e=>e.currentTarget.style.color='var(--rd)'}
                 onMouseLeave={e=>e.currentTarget.style.color='var(--tx3)'}>✕</button>
-            </div>
-          ))}
-        </div>
-      </>}
+            </>}
+          </div>;
+        })}
+      </div>}
 
-      {/* Import */}
-      <div style={{textAlign:'center'}}>
-        <input ref={fRef} type="file" accept=".json" style={{display:'none'}}
-          onChange={e=>{
-            const f=e.target.files[0];if(!f)return;
-            const r=new FileReader();r.onload=ev=>onImport(ev.target.result);r.readAsText(f);
-          }}/>
-        <button onClick={()=>fRef.current?.click()} style={{padding:'10px 24px',borderRadius:8,
-          background:'var(--sf)',border:'1px solid var(--bd)',fontSize:13,color:'var(--tx2)'}}>
-          ↑ Import Trip from File
-        </button>
-      </div>
+      {/* Templates tab */}
+      {tab==='templates'&&<div style={{display:'flex',flexDirection:'column',gap:10}}>
+        {(!templates||templates.length===0)&&<div style={{textAlign:'center',color:'var(--tx3)',
+          padding:'32px 0',fontSize:14}}>
+          No templates yet. Open a trip, set up your packing, then use<br/>
+          <strong style={{color:'var(--tx)'}}>+ Save Template</strong> in the header.
+        </div>}
+        {(templates||[]).slice().sort((a,b)=>b.createdAt-a.createdAt).map(tpl=>(
+          <TemplateCard key={tpl.id} tpl={tpl} trips={trips}
+            onRename={name=>onRenameTemplate(tpl.id,name)}
+            onRemoveItem={idx=>onRemoveTemplateItem(tpl.id,idx)}
+            onDelete={()=>onDeleteTemplate(tpl.id)}
+            onApplyToTrip={tripId=>onApplyTemplateToTrip(tpl.id,tripId)}/>
+        ))}
+      </div>}
     </div>
   </div>;
 }
@@ -1315,18 +1519,6 @@ function App(){
   const addTrip=name=>{const t=mkTrip(name);setTrips(ts=>[...ts,t]);setActiveId(t.id);setScreen('trip');setView('board');};
   const delTrip=id=>{setTrips(ts=>ts.filter(t=>t.id!==id));if(activeId===id){setActiveId(null);setScreen('home');}};
   const renameTrip=(id,name)=>setTrips(ts=>ts.map(t=>t.id===id?{...t,name}:t));
-  const importTrip=json=>{
-    try{const t=JSON.parse(json);const nt={...t,id:genId(),name:t.name+' (imported)'};
-      setTrips(ts=>[...ts,nt]);setActiveId(nt.id);setScreen('trip');
-    }catch{alert('Invalid trip file');}
-  };
-  const exportTrip=()=>{
-    if(!trip)return;
-    const b=new Blob([JSON.stringify(trip,null,2)],{type:'application/json'});
-    const u=URL.createObjectURL(b);const a=document.createElement('a');
-    a.href=u;a.download=`${trip.name.replace(/\s+/g,'-')}-packing.json`;a.click();
-    URL.revokeObjectURL(u);
-  };
 
   const addLoc=name=>mut(t=>({...t,locations:[...t.locations,
     {id:genId(),name,color:LOC_COLORS[t.locations.length%LOC_COLORS.length],bagWeight:0}]}));
@@ -1353,10 +1545,15 @@ function App(){
     setTemplates(ts=>[...ts,{id:genId(),name,createdAt:Date.now(),assignments}]);
   };
   const delTemplate=id=>setTemplates(ts=>ts.filter(t=>t.id!==id));
-  const applyTemplate=(templateId)=>{
+  const renameTemplate=(id,name)=>setTemplates(ts=>ts.map(t=>t.id===id?{...t,name}:t));
+  const removeTemplateItem=(templateId,idx)=>setTemplates(ts=>ts.map(t=>
+    t.id===templateId?{...t,assignments:t.assignments.filter((_,i)=>i!==idx)}:t));
+  const applyTemplate=(templateId,targetTripId)=>{
     const tpl=templates.find(t=>t.id===templateId);
-    if(!tpl||!trip)return;
-    mut(t=>{
+    const tid=targetTripId||activeId;
+    if(!tpl||!tid)return;
+    setTrips(ts=>ts.map(t=>{
+      if(t.id!==tid)return t;
       let{items,locations,assignments}=t;
       tpl.assignments.forEach(({itemName,itemCategory,itemWeight,locationName,quantity})=>{
         const loc=locations.find(l=>l.name.toLowerCase()===locationName.toLowerCase());
@@ -1367,7 +1564,7 @@ function App(){
         if(!exists)assignments=[...assignments,{id:genId(),itemId:item.id,locationId:loc.id,quantity,packed:false}];
       });
       return{...t,items,assignments};
-    });
+    }));
   };
 
   const setAssign=(itemId,locationId,quantity)=>mut(t=>{
@@ -1391,23 +1588,30 @@ function App(){
   return <div style={{display:'flex',flexDirection:'column',height:'100vh',background:'var(--bg)'}}>
 
     {screen==='home'&&<>
-      <div style={{display:'flex',alignItems:'center',padding:'0 20px',height:54,
+      <div style={{display:'flex',alignItems:'center',padding:'0 16px',height:54,
         background:'var(--sf)',borderBottom:'1px solid var(--bd)',flexShrink:0}}>
         <div className="bb" style={{fontSize:24,color:'var(--am)',letterSpacing:3,flex:1}}>PACKR</div>
         <DisplayName user={user} onUpdate={u=>setUser(u)}/>
         <button onClick={signOut} style={{fontSize:12,color:'var(--tx3)',padding:'5px 10px',
-          borderRadius:6,border:'1px solid var(--bd)',background:'var(--sf2)',marginLeft:10}}>Sign out</button>
+          borderRadius:6,border:'1px solid var(--bd)',background:'var(--sf2)',marginLeft:8,flexShrink:0,whiteSpace:'nowrap'}}>
+          Sign out
+        </button>
       </div>
       <HomeScreen trips={trips} templates={templates} onCreate={addTrip} onSelect={openTrip}
-        onDelete={delTrip} onRename={renameTrip} onImport={importTrip}
+        onDelete={delTrip} onRename={renameTrip}
         onDeleteTemplate={delTemplate}
-        onApplyTemplate={()=>alert('Open a trip first, then use "⚡ Apply Template" in the header.')}/>
+        onRenameTemplate={renameTemplate}
+        onRemoveTemplateItem={removeTemplateItem}
+        onApplyTemplateToTrip={(templateId,tripId)=>{
+          setActiveId(tripId);
+          applyTemplate(templateId,tripId);
+          openTrip(tripId);
+        }}/>
     </>}
 
     {screen==='trip'&&trip&&<>
       <TripHeader trip={trip} onHome={goHome}
         onRename={name=>renameTrip(activeId,name)}
-        onExport={exportTrip} onImport={importTrip}
         onSignOut={signOut} user={user} onUpdateUser={u=>setUser(u)}
         onSaveTemplate={()=>setModal({type:'save-template'})}
         onApplyTemplate={()=>setModal({type:'apply-template'})}
