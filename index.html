@@ -361,6 +361,8 @@ function PackBox({packed,onChange}){
 }
 
 /* ── ITEM CARD (board) ───────────────────────────────────────────── */
+const isTouchPrimary=()=>window.matchMedia('(hover:none)').matches;
+
 function ItemCard({item,a,locColor,onToggle,onQty,onOpen,onDragStart,onDragEnter,onDragEnd,showInsertLine,sort='personal'}){
   const canDrag=!a.packed&&sort==='personal';
 
@@ -368,13 +370,10 @@ function ItemCard({item,a,locColor,onToggle,onQty,onOpen,onDragStart,onDragEnter
     e.stopPropagation();
     onDragStart(a.id);
 
-    // Create floating ghost that follows the finger
     const ghost=document.createElement('div');
     ghost.textContent=item.name;
     Object.assign(ghost.style,{
-      position:'fixed',
-      left:'-9999px',   // off-screen until first touchmove
-      top:'-9999px',
+      position:'fixed',left:'-9999px',top:'-9999px',
       zIndex:9999,pointerEvents:'none',
       background:'var(--am)',color:'#1a0e00',
       padding:'8px 14px',borderRadius:8,fontSize:13,fontWeight:700,
@@ -384,9 +383,9 @@ function ItemCard({item,a,locColor,onToggle,onQty,onOpen,onDragStart,onDragEnter
     });
     document.body.appendChild(ghost);
 
-    const move=e=>{
-      e.preventDefault();
-      const t=e.touches[0];
+    const move=ev=>{
+      ev.preventDefault();
+      const t=ev.touches[0];
       ghost.style.left=t.clientX+'px';
       ghost.style.top=t.clientY+'px';
       const el=document.elementFromPoint(t.clientX,t.clientY);
@@ -413,15 +412,15 @@ function ItemCard({item,a,locColor,onToggle,onQty,onOpen,onDragStart,onDragEnter
         e.dataTransfer.effectAllowed='move';
         onDragStart(a.id);
       }:undefined}
-      onDragEnter={canDrag?e=>{e.preventDefault();onDragEnter(a.id);}:undefined}
-      onDragOver={canDrag?e=>e.preventDefault():undefined}
+      onDragEnter={e=>{e.preventDefault();if(onDragEnter)onDragEnter(a.id);}}
+      onDragOver={e=>e.preventDefault()}
       onDragEnd={canDrag?onDragEnd:undefined}
       style={{background:a.packed?`${locColor}0c`:'var(--sf2)',
         border:`1px solid ${a.packed?locColor+'38':'var(--bd)'}`,
         borderRadius:8,padding:'9px 11px',display:'flex',alignItems:'center',gap:8,
         transition:'border-color .15s',opacity:a.packed?.58:1,marginBottom:6}}>
       {canDrag&&<span
-        onTouchStart={onHandleTouchStart}
+        onTouchStart={isTouchPrimary()?onHandleTouchStart:undefined}
         style={{color:'var(--tx3)',fontSize:16,flexShrink:0,
           lineHeight:1,padding:'4px 4px',userSelect:'none',
           touchAction:'none',cursor:'grab'}}>
